@@ -36,6 +36,9 @@ async function main(): Promise<void> {
     // Webhook mode (production)
     const app = express();
 
+    // Parse JSON body (required for grammY webhook)
+    app.use(express.json());
+
     // Debug: log all incoming requests
     app.use((req, _res, next) => {
       logger.info({ method: req.method, path: req.path }, "Incoming HTTP request");
@@ -68,6 +71,16 @@ async function main(): Promise<void> {
         allowed_updates: ["message", "callback_query", "my_chat_member"],
       });
       logger.info("Webhook set successfully");
+
+      // Verify webhook info
+      const webhookInfo = await bot.api.getWebhookInfo();
+      logger.info({
+        url: webhookInfo.url,
+        hasCustomCert: webhookInfo.has_custom_certificate,
+        pendingCount: webhookInfo.pending_update_count,
+        lastError: webhookInfo.last_error_message,
+        lastErrorDate: webhookInfo.last_error_date,
+      }, "Webhook info");
     } catch (err) {
       logger.error({ error: err }, "Failed to set webhook");
       throw err;
