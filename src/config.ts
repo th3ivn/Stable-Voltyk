@@ -2,23 +2,24 @@ import { z } from "zod";
 import "dotenv/config";
 
 const envSchema = z.object({
-  BOT_TOKEN: z.string().min(1, "BOT_TOKEN is required"),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  BOT_TOKEN: z.string().min(1, "BOT_TOKEN is required").transform((s) => s.trim()),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required").transform((s) => s.trim()),
   REDIS_URL: z.string().optional(),
   OWNER_ID: z.coerce.number().optional(),
   ADMIN_IDS: z
     .string()
     .default("")
+    .transform((s) => s.trim())
     .transform((s) => (s.length > 0 ? s.split(",").map(Number) : [])),
   TZ: z.string().default("Europe/Kyiv"),
   PORT: z.coerce.number().default(3000),
   USE_WEBHOOK: z
     .string()
     .default("true")
-    .transform((s) => s === "true"),
-  WEBHOOK_URL: z.string().default(""),
+    .transform((s) => s.trim() === "true"),
+  WEBHOOK_URL: z.string().default("").transform((s) => s.trim()),
   WEBHOOK_PATH: z.string().default("/webhook"),
-  WEBHOOK_SECRET: z.string().default(""),
+  WEBHOOK_SECRET: z.string().default("").transform((s) => s.trim()),
   SCHEDULE_CHECK_INTERVAL_S: z.coerce.number().default(60),
   POWER_CHECK_INTERVAL_S: z.coerce.number().default(0),
   POWER_DEBOUNCE_MINUTES: z.coerce.number().default(5),
