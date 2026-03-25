@@ -31,13 +31,13 @@ async function main(): Promise<void> {
     // Webhook mode (production)
     const app = express();
 
-    app.use(
-      config.WEBHOOK_PATH,
-      webhookCallback(bot, "express", {
-        secretToken: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
-      }),
-    );
+    // Webhook endpoint (POST only)
+    const webhookHandler = webhookCallback(bot, "express", {
+      secretToken: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
+    });
+    app.post(config.WEBHOOK_PATH, webhookHandler);
 
+    // Health check
     app.get("/health", (_req, res) => {
       res.json({
         status: "ok",
@@ -46,13 +46,22 @@ async function main(): Promise<void> {
       });
     });
 
-    app.listen(config.PORT, async () => {
-      logger.info(`Server running on port ${config.PORT}`);
+    // Set webhook first, then start server
+    const webhookUrl = `${config.WEBHOOK_URL}${config.WEBHOOK_PATH}`;
+    logger.info({ webhookUrl }, "Setting webhook...");
 
-      await bot.api.setWebhook(`${config.WEBHOOK_URL}${config.WEBHOOK_PATH}`, {
+    try {
+      await bot.api.setWebhook(webhookUrl, {
         secret_token: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
       });
       logger.info("Webhook set successfully");
+    } catch (err) {
+      logger.error({ error: err }, "Failed to set webhook");
+      throw err;
+    }
+
+    app.listen(config.PORT, () => {
+      logger.info(`Server running on port ${config.PORT}`);
     });
   } else {
     // Long polling mode (development)
