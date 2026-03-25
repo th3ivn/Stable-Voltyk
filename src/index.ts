@@ -13,7 +13,6 @@ async function main(): Promise<void> {
   logger.info("Starting Voltyk bot...");
 
   // 1. Database
-  logger.info("Connecting to database...");
   const db = await createDbConnection(config.DATABASE_URL);
 
   // 2. Run migrations
@@ -27,7 +26,6 @@ async function main(): Promise<void> {
   registerMenuHandlers(bot);
 
   // 5. Initialize bot (required for webhook mode)
-  logger.info("Initializing bot...");
   await bot.init();
   logger.info({ botUsername: bot.botInfo.username }, "Bot initialized");
 
@@ -35,21 +33,15 @@ async function main(): Promise<void> {
   if (config.USE_WEBHOOK && config.WEBHOOK_URL.length > 0) {
     // Webhook mode (production)
     const app = express();
-
-    // Parse JSON body (required for grammY webhook)
     app.use(express.json());
 
-    // Debug: log all incoming requests
-    app.use((req, _res, next) => {
-      logger.info({ method: req.method, path: req.path }, "Incoming HTTP request");
-      next();
-    });
-
-    // Webhook endpoint (POST only)
-    const webhookHandler = webhookCallback(bot, "express", {
-      secretToken: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
-    });
-    app.post(config.WEBHOOK_PATH, webhookHandler);
+    // Webhook endpoint
+    app.post(
+      config.WEBHOOK_PATH,
+      webhookCallback(bot, "express", {
+        secretToken: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
+      }),
+    );
 
     // Health check
     app.get("/health", (_req, res) => {
@@ -63,24 +55,12 @@ async function main(): Promise<void> {
 
     // Set webhook
     const webhookUrl = `${config.WEBHOOK_URL}${config.WEBHOOK_PATH}`;
-    logger.info({ webhookUrl }, "Setting webhook...");
-
     try {
       await bot.api.setWebhook(webhookUrl, {
         secret_token: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
         allowed_updates: ["message", "callback_query", "my_chat_member"],
       });
-      logger.info("Webhook set successfully");
-
-      // Verify webhook info
-      const webhookInfo = await bot.api.getWebhookInfo();
-      logger.info({
-        url: webhookInfo.url,
-        hasCustomCert: webhookInfo.has_custom_certificate,
-        pendingCount: webhookInfo.pending_update_count,
-        lastError: webhookInfo.last_error_message,
-        lastErrorDate: webhookInfo.last_error_date,
-      }, "Webhook info");
+      logger.info({ webhookUrl }, "Webhook set successfully");
     } catch (err) {
       logger.error({ error: err }, "Failed to set webhook");
       throw err;
@@ -88,11 +68,10 @@ async function main(): Promise<void> {
 
     // Start HTTP server
     app.listen(config.PORT, () => {
-      logger.info(`Server running on port ${config.PORT}`);
+      logger.info({ port: config.PORT }, "Server running");
     });
   } else {
     // Long polling mode (development)
-    logger.info("Starting in long polling mode...");
     await bot.api.deleteWebhook();
     void bot.start({
       onStart: () => logger.info("Bot started (long polling)"),

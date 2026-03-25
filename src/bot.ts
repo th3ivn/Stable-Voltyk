@@ -55,14 +55,15 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
       requestId: ctx.requestId,
       userId: ctx.from?.id,
       chatId: ctx.chat?.id,
-      updateType: ctx.update ? Object.keys(ctx.update).filter((k) => k !== "update_id")[0] : "unknown",
     }) as Logger;
-    ctx.log.info("Incoming update");
     const start = Date.now();
     try {
       await next();
     } finally {
-      ctx.log.info({ durationMs: Date.now() - start }, "Update processed");
+      const duration = Date.now() - start;
+      if (duration > 1000) {
+        ctx.log.warn({ durationMs: duration }, "Slow update processing");
+      }
     }
   });
 
@@ -72,15 +73,23 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
     const e = err.error;
 
     if (e instanceof GrammyError) {
-      // Ignore "message is not modified" errors
-      if (e.description.includes("message is not modified")) {
+      // Ignore common non-critical errors
+      if (
+        e.description.includes("message is not modified") ||
+        e.description.includes("query is too old")
+      ) {
         return;
       }
-      logger.error({ error: e.description, method: e.method }, "Grammy API error");
+      // Log blocked users as warn, not error
+      if (e.description.includes("bot was blocked") || e.description.includes("chat not found")) {
+        ctx.log?.warn({ error: e.description, method: e.method }, "User unavailable");
+        return;
+      }
+      ctx.log?.error({ error: e.description, method: e.method }, "Telegram API error");
     } else if (e instanceof HttpError) {
-      logger.error({ error: e.message }, "HTTP error");
+      ctx.log?.error({ error: e.message }, "HTTP error");
     } else {
-      logger.error({ error: e }, "Unhandled error");
+      logger.error({ error: e, userId: ctx.from?.id }, "Unhandled error");
     }
 
     // Try to notify user

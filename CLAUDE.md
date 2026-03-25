@@ -10,8 +10,8 @@
 | 4 | Database queries (users CRUD, settings k/v, schedule checks/snapshots/reminders, power states/history) | ✅ Done |
 | 5 | Constants + Keyboards + Formatters (emoji IDs, regions, всі inline keyboards, всі тексти повідомлень) | ✅ Done |
 | 6 | Bot instance + Middleware + /start wizard (bot.ts, session, throttle, maintenance, повний wizard flow, main menu) | ✅ Done |
-| 7 | Main menu + Schedule + Timer + Stats + Help handlers | 🔄 In Progress |
-| 8 | Settings handlers (region, alerts, IP, channel, cleanup, data) | ⬜ |
+| 7 | Main menu + Schedule + Timer + Stats + Help handlers | ✅ Done |
+| 8 | Settings handlers (region, alerts, IP, channel, cleanup, data) | 🔄 In Progress |
 | 9 | Channel handlers (connect, format, notifications, pause, test, branding) | ⬜ |
 | 10 | Admin handlers (panel, broadcast, growth, intervals, maintenance, pause) | ⬜ |
 | 11 | API Service (GitHub fetch, schedule parsing, cache, circuit breaker) | ⬜ |

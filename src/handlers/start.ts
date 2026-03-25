@@ -1,5 +1,13 @@
 import type { BotContext } from "../bot.js";
-import { findUserByTelegramId, createUser, reactivateUser } from "../db/queries/users.js";
+import {
+  findUserByTelegramId,
+  findUserWithRelations,
+  createUser,
+  reactivateUser,
+  updateUser,
+  updateNotificationSettings,
+  deleteUser,
+} from "../db/queries/users.js";
 import { getSettingBool } from "../db/queries/settings.js";
 import { getRegionName } from "../constants/regions.js";
 import {
@@ -21,7 +29,6 @@ import {
   registrationDisabledMessage,
   formatMainMenuMessage,
 } from "../formatters/messages.js";
-import { findUserWithRelations, updateNotificationSettings } from "../db/queries/users.js";
 import type { Bot } from "grammy";
 
 export function registerStartHandlers(bot: Bot<BotContext>): void {
@@ -66,6 +73,11 @@ async function handleStart(ctx: BotContext): Promise<void> {
 
   // Existing active user → show main menu
   if (existingUser !== null && existingUser.isActive) {
+    // Update username if changed
+    const currentUsername = ctx.from?.username ?? null;
+    if (existingUser.username !== currentUsername) {
+      await updateUser(ctx.db, existingUser.id, { username: currentUsername });
+    }
     await showMainMenu(ctx, existingUser.id);
     return;
   }
@@ -294,7 +306,6 @@ async function handleCreateNewProfile(ctx: BotContext): Promise<void> {
 
   const user = await findUserByTelegramId(ctx.db, telegramId);
   if (user !== null) {
-    const { deleteUser } = await import("../db/queries/users.js");
     await deleteUser(ctx.db, user.id);
   }
 
@@ -335,13 +346,11 @@ export async function showMainMenu(ctx: BotContext, userId: number): Promise<voi
     channelPaused: data.channelConfig?.channelPaused ?? false,
   });
 
-  // Try edit, fallback to send
+  // Try edit (callback context), fallback to send (command context)
   try {
     await ctx.editMessageText(text, { reply_markup: keyboard });
   } catch {
     const msg = await ctx.reply(text, { reply_markup: keyboard });
-    // Store menu message id
-    const { updateUser } = await import("../db/queries/users.js");
     await updateUser(ctx.db, userId, { lastMenuMessageId: msg.message_id });
   }
 }
