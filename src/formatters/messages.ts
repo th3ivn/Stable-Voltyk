@@ -1,0 +1,335 @@
+import { EMOJI } from "../constants/emoji.js";
+import { getRegionName } from "../constants/regions.js";
+import { tgEmoji } from "../utils/helpers.js";
+
+// ============================================================
+// Main menu message
+// ============================================================
+export function formatMainMenuMessage(options: {
+  region: string;
+  queue: string;
+  hasChannel: boolean;
+  channelTitle?: string | null;
+  hasNotifications: boolean;
+}): string {
+  const regionName = getRegionName(options.region);
+  const channelStatus =
+    options.hasChannel && options.channelTitle != null
+      ? `підключено ✅`
+      : "не підключено";
+  const notifStatus = options.hasNotifications ? "увімкнено ✅" : "вимкнено";
+
+  return (
+    `🏠 Головне меню\n\n` +
+    `📍 Регіон: ${regionName} • ${options.queue}\n` +
+    `📺 Канал: ${channelStatus}\n` +
+    `🔔 Сповіщення: ${notifStatus}`
+  );
+}
+
+// ============================================================
+// Settings / Live status message
+// ============================================================
+export function formatLiveStatusMessage(options: {
+  region: string;
+  queue: string;
+  routerIp: string | null;
+  hasChannel: boolean;
+  channelTitle?: string | null;
+  hasNotifications: boolean;
+  ipOnline?: boolean | null;
+}): string {
+  const regionName = getRegionName(options.region);
+  const ipStatus =
+    options.routerIp != null
+      ? `підключено ✅`
+      : "не підключено 😕";
+  const channelStatus =
+    options.hasChannel && options.channelTitle != null
+      ? `підключено ✅`
+      : "не підключено";
+  const notifStatus = options.hasNotifications ? "увімкнено ✅" : "вимкнено";
+
+  let text =
+    `📍 <b>${regionName} · ${options.queue}</b>\n\n` +
+    `📡 IP: ${ipStatus}\n` +
+    `📺 Канал: ${channelStatus}\n` +
+    `🔔 Сповіщення: ${notifStatus}\n`;
+
+  if (options.routerIp == null) {
+    text += "\n💡 Додайте IP для моніторингу світла";
+  } else if (options.hasNotifications) {
+    text += "\n✅ Моніторинг активний";
+  }
+
+  return text;
+}
+
+// ============================================================
+// Notification settings message
+// ============================================================
+export function buildNotificationSettingsMessage(settings: {
+  scheduleChanges: boolean;
+  remind1h: boolean;
+  remind30m: boolean;
+  remind15m: boolean;
+  factOff: boolean;
+  factOn: boolean;
+  remindOff: boolean;
+  remindOn: boolean;
+}): string {
+  const on = "✅";
+  const off = "❌";
+
+  return (
+    `${tgEmoji(EMOJI.BELL, "🔔")} Керування сповіщеннями\n\n` +
+    `${tgEmoji(EMOJI.SCHEDULE_CHANGES, "📈")} Оновлення графіків — ${settings.scheduleChanges ? on : off}\n\n` +
+    `${tgEmoji(EMOJI.HOURGLASS, "⏳")} Нагадування про події перед (вимкнення / відновлення):\n` +
+    `├ За 1 год — ${settings.remind1h ? on : off}\n` +
+    `├ За 30 хв — ${settings.remind30m ? on : off}\n` +
+    `├ За 15 хв — ${settings.remind15m ? on : off}\n` +
+    `└ Фактично за IP-адресою — ${settings.factOff ? on : off}\n\n` +
+    `<i>Нагадування перед відкл. — ${settings.remindOff ? on : off} · перед вкл. — ${settings.remindOn ? on : off}</i>`
+  );
+}
+
+// ============================================================
+// Wizard messages
+// ============================================================
+export function wizardStep1Message(): string {
+  return (
+    `👋 Вітаю! Я Вольтик ⚡\n\n` +
+    `Слідкую за відключеннями світла і одразу\n` +
+    `повідомлю, як тільки щось зміниться.\n\n` +
+    `Налаштування займе ~1 хвилину.\n\n` +
+    `📍 Крок 1 із 3 — Оберіть свій регіон:`
+  );
+}
+
+export function wizardStep2Message(regionName: string): string {
+  return (
+    `✅ Регіон: ${regionName}\n\n` +
+    `⚡ Крок 2 із 3 — Оберіть свою чергу:`
+  );
+}
+
+export function wizardStep3Message(queue: string): string {
+  return (
+    `✅ Черга: ${queue}\n\n` +
+    `📬 Крок 3 із 3 — Куди надсилати сповіщення?\n\n` +
+    `📱 У цьому боті\n` +
+    `Сповіщення приходитимуть прямо в цей чат\n\n` +
+    `📺 У Telegram-каналі\n` +
+    `Бот публікуватиме у ваш канал\n` +
+    `(потрібно додати бота як адміністратора)`
+  );
+}
+
+export function wizardNotifSettingsMessage(): string {
+  return `🔔 Налаштуйте сповіщення в боті:`;
+}
+
+export function wizardDoneMessage(options: {
+  region: string;
+  queue: string;
+}): string {
+  const regionName = getRegionName(options.region);
+  return (
+    `✅ Готово!\n\n` +
+    `📍 Регіон: ${regionName}\n` +
+    `⚡ Черга: ${options.queue}\n` +
+    `🔔 Сповіщення: увімкнено ✅\n\n` +
+    `Я одразу повідомлю вас про наступне\n` +
+    `відключення або появу світла.\n\n` +
+    `⤵ Меню — перейти в головне меню\n` +
+    `📢 Новини бота — канал з оновленнями`
+  );
+}
+
+// ============================================================
+// Deactivated user
+// ============================================================
+export function deactivatedUserMessage(): string {
+  return (
+    `👋 З поверненням!\n\n` +
+    `Ваш профіль було деактивовано.\n\n` +
+    `Оберіть опцію:`
+  );
+}
+
+// ============================================================
+// Registration disabled
+// ============================================================
+export function registrationDisabledMessage(): string {
+  return (
+    `⚠️ Реєстрація тимчасово обмежена\n\n` +
+    `На даний момент реєстрація нових користувачів тимчасово зупинена.\n\n` +
+    `Спробуйте пізніше або зв'яжіться з підтримкою.`
+  );
+}
+
+// ============================================================
+// Help
+// ============================================================
+export function helpMessage(): string {
+  return (
+    `❓ Допомога\n\n` +
+    `Тут ви можете дізнатися як користуватися\n` +
+    `ботом або звернутися за підтримкою.`
+  );
+}
+
+export function faqMessage(): string {
+  return (
+    `${tgEmoji(EMOJI.FAQ, "❓")} FAQ\n\n` +
+    `Тут ви знайдете відповіді на найпоширеніші\n` +
+    `питання про роботу бота.`
+  );
+}
+
+export function supportMessage(): string {
+  return (
+    `${tgEmoji(EMOJI.SUPPORT, "💬")} Служба підтримки\n\n` +
+    `Натисніть кнопку нижче щоб написати\n` +
+    `адміністратору напряму в Telegram.\n` +
+    `Відповідь надійде найближчим часом.`
+  );
+}
+
+// ============================================================
+// IP monitoring messages
+// ============================================================
+export function ipNoIpMessage(): string {
+  return (
+    `${tgEmoji(EMOJI.IP_SETTINGS, "⚙️")} Налаштування моніторингу світла\n\n` +
+    `Бот визначає статус світла у вас вдома — пінгуючи ваш роутер.\n\n` +
+    `Варіант 1 — Статична (біла) IP-адреса\n` +
+    `Дізнатися свою IP можна у провайдера або на 2ip.ua\n\n` +
+    `Варіант 2 — DDNS (якщо немає статичного IP)\n` +
+    `Налаштуйте DDNS на роутері (наприклад, noip.com)\n\n` +
+    `Приклади вводу:\n` +
+    `192.168.1.1\n` +
+    `192.168.1.1:80\n` +
+    `myhome.ddns.net\n\n` +
+    `Введіть вашу IP-адресу або DDNS:`
+  );
+}
+
+export function ipWithIpMessage(routerIp: string, status: string): string {
+  return (
+    `${tgEmoji(EMOJI.IP_SETTINGS, "⚙️")} IP моніторинг\n\n` +
+    `${tgEmoji(EMOJI.IP_ADDR, "📡")} IP: ${routerIp}\n` +
+    `Статус: ${status}`
+  );
+}
+
+export function ipStatusOnline(): string {
+  return `${tgEmoji(EMOJI.ONLINE, "🟢")} Онлайн`;
+}
+
+export function ipStatusOffline(): string {
+  return `${tgEmoji(EMOJI.OFFLINE, "🔴")} Офлайн`;
+}
+
+export function ipStatusChecking(): string {
+  return `Перевіряю ${tgEmoji(EMOJI.PING_LOADING, "⏳")}`;
+}
+
+// ============================================================
+// Cleanup
+// ============================================================
+export function cleanupMessage(options: {
+  autoDeleteCommands: boolean;
+  autoDeleteBotMessages: boolean;
+}): string {
+  const cmdStatus = options.autoDeleteCommands ? "увімкнено ✅" : "вимкнено";
+  const msgStatus = options.autoDeleteBotMessages ? "увімкнено ✅" : "вимкнено";
+  return (
+    `🗑 Автоматичне очищення\n\n` +
+    `⌨️ Команди: ${cmdStatus}\n` +
+    `💬 Відповіді: ${msgStatus}`
+  );
+}
+
+// ============================================================
+// Delete data
+// ============================================================
+export function deleteDataStep1Message(): string {
+  return (
+    `⚠️ Увага\n\n` +
+    `Видалити всі дані:\n` +
+    `• Профіль та налаштування\n` +
+    `• Канал та його налаштування\n` +
+    `• Історію та статистику\n` +
+    `• Сповіщення\n\n` +
+    `Цю дію неможливо скасувати.`
+  );
+}
+
+export function deleteDataStep2Message(): string {
+  return `❗ Підтвердження\n\nВидалити всі дані? Цю дію неможливо скасувати.`;
+}
+
+export function deleteDataDoneMessage(): string {
+  return `Добре, домовились 🙂 Я видалив усі дані та відключив канал.\n\nЯкщо захочете повернутися — /start`;
+}
+
+// ============================================================
+// Channel
+// ============================================================
+export function channelSettingsMessage(options: {
+  hasChannel: boolean;
+  channelTitle?: string | null;
+}): string {
+  if (options.hasChannel && options.channelTitle != null) {
+    return `📺 Налаштування каналу\n📺 Канал: ${options.channelTitle} ✅`;
+  }
+  return `📺 Налаштування каналу`;
+}
+
+export function channelConnectInstructionMessage(botUsername: string): string {
+  return (
+    `📺 <b>Підключення каналу</b>\n\n` +
+    `Щоб бот міг публікувати графіки у ваш канал:\n\n` +
+    `1️⃣ Відкрийте ваш канал у Telegram\n` +
+    `2️⃣ Перейдіть у Налаштування → Адміністратори\n` +
+    `3️⃣ Натисніть "Додати адміністратора"\n` +
+    `4️⃣ Знайдіть бота: @${botUsername}\n` +
+    `5️⃣ Увімкніть усі перемикачі\n\n` +
+    `Після того як ви додасте бота — він знайде канал автоматично.`
+  );
+}
+
+// ============================================================
+// Stats
+// ============================================================
+export function statsMessage(): string {
+  return `📊 Статистика`;
+}
+
+export function statsWeekMessage(options: {
+  outageCount: number;
+  totalMinutes: number;
+}): string {
+  if (options.outageCount === 0) {
+    return (
+      `⚡ Відключення за тиждень\n\n` +
+      `За останні 7 днів відключень не зафіксовано.`
+    );
+  }
+
+  const hours = Math.floor(options.totalMinutes / 60);
+  const minutes = options.totalMinutes % 60;
+  const duration =
+    hours > 0 && minutes > 0
+      ? `${hours}г ${minutes}хв`
+      : hours > 0
+        ? `${hours}г`
+        : `${minutes}хв`;
+
+  return (
+    `⚡ Відключення за тиждень\n\n` +
+    `📊 Кількість відключень: ${options.outageCount}\n` +
+    `⏱ Загальний час без світла: ${duration}`
+  );
+}
