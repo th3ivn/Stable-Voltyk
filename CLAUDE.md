@@ -1,5 +1,30 @@
 # Промт для переписування Telegram-бота «Вольтик» з Python/Aiogram на TypeScript/grammY
 
+## ✅ Прогрес реалізації
+
+| Крок | Опис | Статус |
+|------|------|--------|
+| 1 | Project scaffolding (package.json, tsconfig, eslint, prettier, vitest, структура папок) | ✅ Done |
+| 2 | Config + Logger + Error types + Helpers (config.ts, logger.ts, errors.ts, helpers.ts + тести) | ✅ Done |
+| 3 | Database schema + connection (22 таблиці Drizzle, Neon client з retry, migrate.ts, перша міграція) | ✅ Done |
+| 4 | Database queries (users CRUD, settings k/v, schedule checks/snapshots/reminders, power states/history) | ✅ Done |
+| 5 | Constants + Keyboards + Formatters (emoji IDs, regions, всі inline keyboards, всі тексти повідомлень) | ✅ Done |
+| 6 | Bot instance + Middleware + /start wizard (bot.ts, session, throttle, maintenance, повний wizard flow, main menu) | ✅ Done |
+| 7 | Main menu + Schedule + Timer + Stats + Help handlers | 🔄 In Progress |
+| 8 | Settings handlers (region, alerts, IP, channel, cleanup, data) | ⬜ |
+| 9 | Channel handlers (connect, format, notifications, pause, test, branding) | ⬜ |
+| 10 | Admin handlers (panel, broadcast, growth, intervals, maintenance, pause) | ⬜ |
+| 11 | API Service (GitHub fetch, schedule parsing, cache, circuit breaker) | ⬜ |
+| 12 | Power Monitor (IP ping, debounce, state management, notifications) | ⬜ |
+| 13 | Scheduler (croner jobs, schedule checks, reminders, cleanup) | ⬜ |
+| 14 | Retry Queue + Branding (Telegram message retry, channel branding) | ⬜ |
+| 15 | Entry point + Startup sequence (повний startup flow, graceful shutdown) | ⬜ |
+| 16 | Metrics + Health + Admin notifications | ⬜ |
+| 17 | Docker + Railway + CI (Dockerfile, railway.json, GitHub Actions) | ⬜ |
+| 18 | Final testing + Polish | ⬜ |
+
+---
+
 ## Мета
 
 Переписати Telegram-бота **«Вольтик» (Voltyk)** з Python (Aiogram 3 + SQLAlchemy + Alembic + PostgreSQL) на **TypeScript** зі стеком:

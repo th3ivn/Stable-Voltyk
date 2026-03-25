@@ -1,11 +1,9 @@
-import { neon, neonConfig } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema.js";
 import { logger } from "../utils/logger.js";
 import { sleep } from "../utils/helpers.js";
 import { AppError, ErrorCode } from "../utils/errors.js";
-
-neonConfig.fetchConnectionCache = true;
 
 export type Database = ReturnType<typeof createDrizzle>;
 
