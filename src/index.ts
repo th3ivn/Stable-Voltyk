@@ -26,10 +26,21 @@ async function main(): Promise<void> {
   registerStartHandlers(bot);
   registerMenuHandlers(bot);
 
-  // 5. Start bot
+  // 5. Initialize bot (required for webhook mode)
+  logger.info("Initializing bot...");
+  await bot.init();
+  logger.info({ botUsername: bot.botInfo.username }, "Bot initialized");
+
+  // 6. Start bot
   if (config.USE_WEBHOOK && config.WEBHOOK_URL.length > 0) {
     // Webhook mode (production)
     const app = express();
+
+    // Debug: log all incoming requests
+    app.use((req, _res, next) => {
+      logger.info({ method: req.method, path: req.path }, "Incoming HTTP request");
+      next();
+    });
 
     // Webhook endpoint (POST only)
     const webhookHandler = webhookCallback(bot, "express", {
@@ -43,16 +54,18 @@ async function main(): Promise<void> {
         status: "ok",
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
+        bot: bot.botInfo.username,
       });
     });
 
-    // Set webhook first, then start server
+    // Set webhook
     const webhookUrl = `${config.WEBHOOK_URL}${config.WEBHOOK_PATH}`;
     logger.info({ webhookUrl }, "Setting webhook...");
 
     try {
       await bot.api.setWebhook(webhookUrl, {
         secret_token: config.WEBHOOK_SECRET.length > 0 ? config.WEBHOOK_SECRET : undefined,
+        allowed_updates: ["message", "callback_query", "my_chat_member"],
       });
       logger.info("Webhook set successfully");
     } catch (err) {
@@ -60,6 +73,7 @@ async function main(): Promise<void> {
       throw err;
     }
 
+    // Start HTTP server
     app.listen(config.PORT, () => {
       logger.info(`Server running on port ${config.PORT}`);
     });
