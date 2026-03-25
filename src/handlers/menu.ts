@@ -12,6 +12,7 @@ import {
   supportKeyboard,
   statsKeyboard,
   statsBackKeyboard,
+  settingsKeyboard,
   backToMainKeyboard,
 } from "../keyboards/inline.js";
 import {
@@ -38,6 +39,37 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
     if (user === null) return;
 
     await showMainMenu(ctx, user.id);
+  });
+
+  // ============================================================
+  // Settings menu
+  // ============================================================
+  bot.callbackQuery("menu_settings", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const telegramId = ctx.from?.id.toString();
+    if (telegramId === undefined) return;
+
+    const data = await findUserWithRelations(ctx.db, telegramId);
+    if (data === null) return;
+
+    const hasChannel =
+      data.channelConfig?.channelId != null && data.channelConfig.channelId.length > 0;
+    const hasNotifications = data.notificationSettings?.notifyScheduleChanges ?? false;
+
+    const text = formatLiveStatusMessage({
+      region: data.user.region,
+      queue: data.user.queue,
+      routerIp: data.user.routerIp,
+      hasChannel,
+      channelTitle: data.channelConfig?.channelTitle,
+      hasNotifications,
+    });
+
+    const { isAdmin } = await import("../config.js");
+    await ctx.editMessageText(text, {
+      parse_mode: "HTML",
+      reply_markup: settingsKeyboard({ isAdmin: isAdmin(ctx.from.id) }),
+    });
   });
 
   // ============================================================

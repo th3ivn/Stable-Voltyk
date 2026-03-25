@@ -6,6 +6,12 @@ import { createDbConnection } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerStartHandlers } from "./handlers/start.js";
 import { registerMenuHandlers } from "./handlers/menu.js";
+import { registerRegionHandlers } from "./handlers/settings/region.js";
+import { registerAlertsHandlers } from "./handlers/settings/alerts.js";
+import { registerIpHandlers } from "./handlers/settings/ip.js";
+import { registerChannelSettingsHandlers } from "./handlers/settings/channel.js";
+import { registerCleanupHandlers } from "./handlers/settings/cleanup.js";
+import { registerDataHandlers } from "./handlers/settings/data.js";
 import { webhookCallback } from "grammy";
 import express from "express";
 
@@ -24,6 +30,12 @@ async function main(): Promise<void> {
   // 4. Register handlers
   registerStartHandlers(bot);
   registerMenuHandlers(bot);
+  registerRegionHandlers(bot);
+  registerAlertsHandlers(bot);
+  registerIpHandlers(bot);
+  registerChannelSettingsHandlers(bot);
+  registerCleanupHandlers(bot);
+  registerDataHandlers(bot);
 
   // 5. Initialize bot (required for webhook mode)
   await bot.init();
