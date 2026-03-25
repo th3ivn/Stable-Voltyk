@@ -5,8 +5,13 @@ import {
   channelNoChannelKeyboard,
   channelWithChannelKeyboard,
   channelConnectInstructionKeyboard,
+  channelInfoKeyboard,
 } from "../../keyboards/inline.js";
-import { channelSettingsMessage, channelConnectInstructionMessage } from "../../formatters/messages.js";
+import {
+  channelSettingsMessage,
+  channelConnectInstructionMessage,
+  channelInfoMessage,
+} from "../../formatters/messages.js";
 
 export function registerChannelSettingsHandlers(bot: Bot<BotContext>): void {
   // Settings → Channel
@@ -37,6 +42,35 @@ export function registerChannelSettingsHandlers(bot: Bot<BotContext>): void {
         reply_markup: channelNoChannelKeyboard(),
       });
     }
+  });
+
+  // Channel info
+  bot.callbackQuery("channel_info", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const telegramId = ctx.from?.id.toString();
+    if (telegramId === undefined) return;
+
+    const data = await findUserWithRelations(ctx.db, telegramId);
+    if (data === null) return;
+
+    const cc = data.channelConfig;
+    if (cc?.channelId == null || cc.channelId.length === 0) {
+      await ctx.editMessageText("❌ Канал не підключено.", {
+        reply_markup: channelInfoKeyboard(),
+      });
+      return;
+    }
+
+    await ctx.editMessageText(
+      channelInfoMessage({
+        channelId: cc.channelId,
+        channelTitle: cc.channelTitle,
+        channelDescription: cc.channelDescription,
+        channelStatus: cc.channelStatus ?? "active",
+        channelPaused: cc.channelPaused ?? false,
+      }),
+      { parse_mode: "HTML", reply_markup: channelInfoKeyboard() },
+    );
   });
 
   // Connect channel — show instruction

@@ -307,6 +307,112 @@ export function statsMessage(): string {
   return `📊 Статистика`;
 }
 
+// ============================================================
+// Channel info
+// ============================================================
+export function channelInfoMessage(options: {
+  channelId: string;
+  channelTitle?: string | null;
+  channelDescription?: string | null;
+  channelStatus: string;
+  channelPaused: boolean;
+}): string {
+  const status = options.channelPaused
+    ? "⏸ На паузі"
+    : options.channelStatus === "active"
+      ? "🟢 Активний"
+      : "🔴 Відключено";
+
+  let text =
+    `📺 <b>Інформація про канал</b>\n\n` +
+    `🆔 ID: <code>${options.channelId}</code>\n` +
+    `📝 Назва: ${options.channelTitle ?? "—"}\n` +
+    `📄 Опис: ${options.channelDescription ?? "—"}\n` +
+    `📊 Статус: ${status}`;
+
+  return text;
+}
+
+// ============================================================
+// Channel format
+// ============================================================
+export function channelFormatMessage(options: {
+  pictureOnly: boolean;
+  deleteOldMessage: boolean;
+}): string {
+  const on = "✅";
+  const off = "❌";
+  return (
+    `📋 <b>Формат публікацій</b>\n\n` +
+    `🖼 Тільки зображення: ${options.pictureOnly ? on : off}\n` +
+    `🗑 Видаляти старе повідомлення: ${options.deleteOldMessage ? on : off}\n\n` +
+    `<i>Тільки зображення — бот публікуватиме лише фото графіку без тексту.\n` +
+    `Видаляти старе — при оновленні графіку старе повідомлення буде видалено.</i>`
+  );
+}
+
+// ============================================================
+// Channel notifications
+// ============================================================
+export function channelNotificationsMessage(settings: {
+  chNotifySchedule: boolean;
+  chRemind1h: boolean;
+  chRemind30m: boolean;
+  chRemind15m: boolean;
+  chNotifyFactOff: boolean;
+  chNotifyFactOn: boolean;
+  chNotifyRemindOff: boolean;
+  chNotifyRemindOn: boolean;
+}): string {
+  const on = "✅";
+  const off = "❌";
+
+  return (
+    `${tgEmoji(EMOJI.BELL, "🔔")} Сповіщення каналу\n\n` +
+    `${tgEmoji(EMOJI.SCHEDULE_CHANGES, "📈")} Оновлення графіків — ${settings.chNotifySchedule ? on : off}\n\n` +
+    `${tgEmoji(EMOJI.HOURGLASS, "⏳")} Нагадування про події:\n` +
+    `├ За 1 год — ${settings.chRemind1h ? on : off}\n` +
+    `├ За 30 хв — ${settings.chRemind30m ? on : off}\n` +
+    `├ За 15 хв — ${settings.chRemind15m ? on : off}\n` +
+    `└ Фактично за IP-адресою — ${settings.chNotifyFactOff ? on : off}\n\n` +
+    `<i>Нагадування перед відкл. — ${settings.chNotifyRemindOff ? on : off} · перед вкл. — ${settings.chNotifyRemindOn ? on : off}</i>`
+  );
+}
+
+// ============================================================
+// Channel edit prompts
+// ============================================================
+export function channelEditTitleMessage(currentTitle?: string | null): string {
+  const current = currentTitle != null ? `Поточна назва: ${currentTitle}\n\n` : "";
+  return `✏️ <b>Назва каналу</b>\n\n${current}Введіть нову назву для каналу:`;
+}
+
+export function channelEditDescMessage(currentDesc?: string | null): string {
+  const current = currentDesc != null ? `Поточний опис: ${currentDesc}\n\n` : "";
+  return `📝 <b>Опис каналу</b>\n\n${current}Введіть новий опис для каналу:`;
+}
+
+// ============================================================
+// Channel test
+// ============================================================
+export function channelTestSentMessage(channelTitle: string): string {
+  return `🧪 Тестове повідомлення надіслано в канал "${channelTitle}"`;
+}
+
+// ============================================================
+// Pending channel
+// ============================================================
+export function pendingChannelMessage(channelTitle: string): string {
+  return (
+    `📺 <b>Знайдено канал!</b>\n\n` +
+    `Канал: <b>${channelTitle}</b>\n\n` +
+    `Підключити цей канал до бота?`
+  );
+}
+
+// ============================================================
+// Stats
+// ============================================================
 export function statsWeekMessage(options: {
   outageCount: number;
   totalMinutes: number;

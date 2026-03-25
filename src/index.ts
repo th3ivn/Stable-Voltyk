@@ -12,6 +12,12 @@ import { registerIpHandlers } from "./handlers/settings/ip.js";
 import { registerChannelSettingsHandlers } from "./handlers/settings/channel.js";
 import { registerCleanupHandlers } from "./handlers/settings/cleanup.js";
 import { registerDataHandlers } from "./handlers/settings/data.js";
+import { registerChatMemberHandlers } from "./handlers/chat-member.js";
+import { registerChannelConnectHandlers } from "./handlers/channel/connect.js";
+import { registerChannelConversationHandlers } from "./handlers/channel/conversation.js";
+import { registerChannelFormatHandlers } from "./handlers/channel/format.js";
+import { registerChannelNotificationHandlers } from "./handlers/channel/notifications.js";
+import { registerChannelTestHandlers } from "./handlers/channel/test.js";
 import { webhookCallback } from "grammy";
 import express from "express";
 
@@ -34,8 +40,14 @@ async function main(): Promise<void> {
   registerAlertsHandlers(bot);
   registerIpHandlers(bot);
   registerChannelSettingsHandlers(bot);
+  registerChannelConnectHandlers(bot);
+  registerChannelConversationHandlers(bot);
+  registerChannelFormatHandlers(bot);
+  registerChannelNotificationHandlers(bot);
+  registerChannelTestHandlers(bot);
   registerCleanupHandlers(bot);
   registerDataHandlers(bot);
+  registerChatMemberHandlers(bot);
 
   // 5. Initialize bot (required for webhook mode)
   await bot.init();

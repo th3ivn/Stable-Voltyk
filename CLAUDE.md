@@ -12,7 +12,7 @@
 | 6 | Bot instance + Middleware + /start wizard (bot.ts, session, throttle, maintenance, повний wizard flow, main menu) | ✅ Done |
 | 7 | Main menu + Schedule + Timer + Stats + Help handlers | ✅ Done |
 | 8 | Settings handlers (region, alerts, IP, channel, cleanup, data) | ✅ Done |
-| 9 | Channel handlers (connect, format, notifications, pause, test, branding) | ⬜ |
+| 9 | Channel handlers (connect, format, notifications, pause, test, branding) | ✅ Done |
 | 10 | Admin handlers (panel, broadcast, growth, intervals, maintenance, pause) | ⬜ |
 | 11 | API Service (GitHub fetch, schedule parsing, cache, circuit breaker) | ⬜ |
 | 12 | Power Monitor (IP ping, debounce, state management, notifications) | ⬜ |

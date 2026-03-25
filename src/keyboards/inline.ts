@@ -414,6 +414,98 @@ export function channelConnectInstructionKeyboard(): InlineKeyboard {
     .row();
 }
 
+export function channelInfoKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelEditInputKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("❌ Скасувати", "channel_cancel_edit").row();
+}
+
+export function channelFormatKeyboard(options: {
+  pictureOnly: boolean;
+  deleteOldMessage: boolean;
+}): InlineKeyboard {
+  const on = "✅";
+  const off = "❌";
+  return new InlineKeyboard()
+    .text(
+      `${options.pictureOnly ? on : off} Тільки зображення`,
+      "channel_toggle_picture_only",
+    )
+    .row()
+    .text(
+      `${options.deleteOldMessage ? on : off} Видаляти старе повідомлення`,
+      "channel_toggle_delete_old",
+    )
+    .row()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelNotificationsKeyboard(settings: {
+  chNotifySchedule: boolean;
+  chNotifyRemindOff: boolean;
+  chNotifyRemindOn: boolean;
+  chNotifyFactOff: boolean;
+  chNotifyFactOn: boolean;
+  chRemind15m: boolean;
+  chRemind30m: boolean;
+  chRemind1h: boolean;
+}): InlineKeyboard {
+  const on = "✅";
+  const off = "❌";
+  return new InlineKeyboard()
+    .text(
+      `${settings.chNotifySchedule ? on : off} Оновлення графіків`,
+      "ch_toggle_schedule",
+    )
+    .row()
+    .text(`${settings.chRemind1h ? on : off} 1 год`, "ch_time_60")
+    .text(`${settings.chRemind30m ? on : off} 30 хв`, "ch_time_30")
+    .text(`${settings.chRemind15m ? on : off} 15 хв`, "ch_time_15")
+    .row()
+    .text(
+      `${settings.chNotifyRemindOff ? on : off} Нагад. перед вимкн.`,
+      "ch_toggle_remind_off",
+    )
+    .text(
+      `${settings.chNotifyRemindOn ? on : off} Нагад. перед вкл.`,
+      "ch_toggle_remind_on",
+    )
+    .row()
+    .text(
+      `${settings.chNotifyFactOff ? on : off} Факт. вимкнення`,
+      "ch_toggle_fact_off",
+    )
+    .text(
+      `${settings.chNotifyFactOn ? on : off} Факт. увімкнення`,
+      "ch_toggle_fact_on",
+    )
+    .row()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelTestKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function pendingChannelKeyboard(pendingId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ Підключити", `pending_channel_confirm_${pendingId}`)
+    .text("❌ Відхилити", `pending_channel_reject_${pendingId}`)
+    .row();
+}
+
 // ============================================================
 // Stats
 // ============================================================
