@@ -36,6 +36,9 @@ async function main(): Promise<void> {
     // Webhook mode (production)
     const app = express();
 
+    // Parse JSON body (required for grammY webhook)
+    app.use(express.json());
+
     // Debug: log all incoming requests
     app.use((req, _res, next) => {
       logger.info({ method: req.method, path: req.path }, "Incoming HTTP request");
