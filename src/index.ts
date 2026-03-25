@@ -13,6 +13,11 @@ import { registerChannelSettingsHandlers } from "./handlers/settings/channel.js"
 import { registerCleanupHandlers } from "./handlers/settings/cleanup.js";
 import { registerDataHandlers } from "./handlers/settings/data.js";
 import { registerChatMemberHandlers } from "./handlers/chat-member.js";
+import { registerAdminPanelHandlers } from "./handlers/admin/panel.js";
+import { registerAdminBroadcastHandlers } from "./handlers/admin/broadcast.js";
+import { registerAdminIntervalsHandlers } from "./handlers/admin/intervals.js";
+import { registerAdminMaintenanceHandlers } from "./handlers/admin/maintenance.js";
+import { registerAdminPauseHandlers } from "./handlers/admin/pause.js";
 import { registerChannelConnectHandlers } from "./handlers/channel/connect.js";
 import { registerChannelConversationHandlers } from "./handlers/channel/conversation.js";
 import { registerChannelFormatHandlers } from "./handlers/channel/format.js";
@@ -47,6 +52,11 @@ async function main(): Promise<void> {
   registerChannelTestHandlers(bot);
   registerCleanupHandlers(bot);
   registerDataHandlers(bot);
+  registerAdminPanelHandlers(bot);
+  registerAdminBroadcastHandlers(bot);
+  registerAdminIntervalsHandlers(bot);
+  registerAdminMaintenanceHandlers(bot);
+  registerAdminPauseHandlers(bot);
   registerChatMemberHandlers(bot);
 
   // 5. Initialize bot (required for webhook mode)

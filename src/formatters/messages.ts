@@ -439,3 +439,97 @@ export function statsWeekMessage(options: {
     `⏱ Загальний час без світла: ${duration}`
   );
 }
+
+// ============================================================
+// Admin messages
+// ============================================================
+export function adminPanelMessage(): string {
+  return `👑 <b>Адмін-панель</b>\n\nОберіть розділ:`;
+}
+
+export function adminAnalyticsMessage(options: {
+  totalUsers: number;
+  activeUsers: number;
+  usersWithIp: number;
+  usersWithChannel: number;
+}): string {
+  return (
+    `📊 <b>Аналітика</b>\n\n` +
+    `👥 Всього користувачів: ${options.totalUsers}\n` +
+    `✅ Активних: ${options.activeUsers}\n` +
+    `📡 З IP моніторингом: ${options.usersWithIp}\n` +
+    `📺 З каналом: ${options.usersWithChannel}`
+  );
+}
+
+export function adminUsersStatsMessage(options: {
+  totalUsers: number;
+  activeUsers: number;
+  blockedUsers: number;
+  regionBreakdown: Array<{ region: string; count: number }>;
+}): string {
+  let text =
+    `👥 <b>Статистика користувачів</b>\n\n` +
+    `📊 Всього: ${options.totalUsers}\n` +
+    `✅ Активних: ${options.activeUsers}\n` +
+    `🚫 Заблокованих: ${options.blockedUsers}\n`;
+
+  if (options.regionBreakdown.length > 0) {
+    text += `\n📍 <b>По регіонах:</b>\n`;
+    for (const { region, count } of options.regionBreakdown) {
+      text += `  • ${region}: ${count}\n`;
+    }
+  }
+
+  return text;
+}
+
+export function adminBroadcastPromptMessage(): string {
+  return `📢 <b>Розсилка</b>\n\nВведіть текст повідомлення для всіх активних користувачів:`;
+}
+
+export function adminBroadcastPreviewMessage(text: string, userCount: number): string {
+  return (
+    `📢 <b>Попередній перегляд</b>\n\n` +
+    `${text}\n\n` +
+    `<i>Буде надіслано ${userCount} користувачам.</i>`
+  );
+}
+
+export function adminBroadcastResultMessage(sent: number, failed: number): string {
+  return (
+    `📢 <b>Розсилка завершена</b>\n\n` +
+    `✅ Надіслано: ${sent}\n` +
+    `❌ Помилок: ${failed}`
+  );
+}
+
+export function adminSettingsMessage(options: {
+  registrationOpen: boolean;
+  scheduleInterval: number;
+  powerInterval: number;
+  debounceMinutes: number;
+}): string {
+  const regStatus = options.registrationOpen ? "✅ Відкрита" : "❌ Закрита";
+  return (
+    `⚙️ <b>Налаштування бота</b>\n\n` +
+    `📝 Реєстрація: ${regStatus}\n` +
+    `⏱ Інтервал перевірки графіків: ${options.scheduleInterval}с\n` +
+    `📡 Інтервал перевірки IP: ${options.powerInterval}с\n` +
+    `⏳ Debounce живлення: ${options.debounceMinutes}хв`
+  );
+}
+
+export function adminMaintenanceMessage(isActive: boolean): string {
+  const status = isActive ? "🔧 Активні" : "✅ Вимкнені";
+  return `🔧 <b>Технічні роботи</b>\n\nСтатус: ${status}`;
+}
+
+export function adminRouterMessage(): string {
+  return `📡 <b>Роутер адміна</b>\n\nМоніторинг адмінських роутерів.`;
+}
+
+export function adminPauseMessage(isPaused: boolean): string {
+  const status = isPaused ? "⏸ На паузі" : "▶️ Працює";
+  return `⏸ <b>Пауза бота</b>\n\nСтатус: ${status}`;
+}

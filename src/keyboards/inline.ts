@@ -645,6 +645,94 @@ export function adminBackKeyboard(): InlineKeyboard {
     .row();
 }
 
+export function adminAnalyticsKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📈 За тиждень", "admin_analytics_week")
+    .text("📊 За місяць", "admin_analytics_month")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminUsersKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📊 Статистика", "admin_users_stats")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminBroadcastKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("❌ Скасувати", "admin_broadcast_cancel")
+    .row();
+}
+
+export function adminBroadcastConfirmKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ Надіслати", "admin_broadcast_send")
+    .text("❌ Скасувати", "admin_broadcast_cancel")
+    .row();
+}
+
+export function adminSettingsKeyboard(options: {
+  registrationOpen: boolean;
+  scheduleInterval: number;
+  powerInterval: number;
+  debounceMinutes: number;
+}): InlineKeyboard {
+  const regStatus = options.registrationOpen ? "✅" : "❌";
+  return new InlineKeyboard()
+    .text(`${regStatus} Реєстрація`, "admin_toggle_registration")
+    .row()
+    .text(`⏱ Графік: ${options.scheduleInterval}с`, "admin_set_schedule_interval")
+    .row()
+    .text(`📡 IP: ${options.powerInterval}с`, "admin_set_power_interval")
+    .row()
+    .text(`⏳ Debounce: ${options.debounceMinutes}хв`, "admin_set_debounce")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminMaintenanceKeyboard(isMaintenanceMode: boolean): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  if (isMaintenanceMode) {
+    kb.text("✅ Вимкнути тех. роботи", "admin_maintenance_off").row();
+  } else {
+    kb.text("🔧 Увімкнути тех. роботи", "admin_maintenance_on").row();
+  }
+  kb.text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+  return kb;
+}
+
+export function adminRouterKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📡 Перевірити", "admin_router_ping")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminPauseKeyboard(isPaused: boolean): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  if (isPaused) {
+    kb.text("▶️ Відновити бота", "admin_pause_off").row();
+  } else {
+    kb.text("⏸ Поставити на паузу", "admin_pause_on").row();
+  }
+  kb.text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+  return kb;
+}
+
 // ============================================================
 // Back + Menu (generic)
 // ============================================================
