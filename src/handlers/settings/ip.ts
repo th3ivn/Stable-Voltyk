@@ -3,6 +3,7 @@ import type { BotContext } from "../../bot.js";
 import { findUserByTelegramId, findUserWithRelations, updateUser } from "../../db/queries/users.js";
 import { deletePowerState } from "../../db/queries/power.js";
 import { isValidIpOrDomain } from "../../utils/helpers.js";
+import { pingHost } from "../../services/power-monitor.js";
 import {
   ipNoIpKeyboard,
   ipWithIpKeyboard,
@@ -179,19 +180,3 @@ export function registerIpHandlers(bot: Bot<BotContext>): void {
   });
 }
 
-async function pingHost(host: string): Promise<boolean> {
-  const url = host.includes("://") ? host : `http://${host}`;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(url, {
-      method: "HEAD",
-      signal: controller.signal,
-      redirect: "manual",
-    });
-    clearTimeout(timeout);
-    return response.status > 0;
-  } catch {
-    return false;
-  }
-}

@@ -15,7 +15,7 @@
 | 9 | Channel handlers (connect, format, notifications, pause, test, branding) | ✅ Done |
 | 10 | Admin handlers (panel, broadcast, growth, intervals, maintenance, pause) | ✅ Done |
 | 11 | API Service (GitHub fetch, schedule parsing, cache, circuit breaker) | ✅ Done |
-| 12 | Power Monitor (IP ping, debounce, state management, notifications) | ⬜ |
+| 12 | Power Monitor (IP ping, debounce, state management, notifications) | ✅ Done |
 | 13 | Scheduler (croner jobs, schedule checks, reminders, cleanup) | ⬜ |
 | 14 | Retry Queue + Branding (Telegram message retry, channel branding) | ⬜ |
 | 15 | Entry point + Startup sequence (повний startup flow, graceful shutdown) | ⬜ |
