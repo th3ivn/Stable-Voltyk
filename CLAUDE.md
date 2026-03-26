@@ -20,7 +20,7 @@
 | 14 | Retry Queue + Branding (Telegram message retry, channel branding) | ✅ Done |
 | 15 | Entry point + Startup sequence (повний startup flow, graceful shutdown) | ✅ Done |
 | 16 | Metrics + Health + Admin notifications | ✅ Done |
-| 17 | Docker + Railway + CI (Dockerfile, railway.json, GitHub Actions) | ⬜ |
+| 17 | Docker + Railway + CI (Dockerfile, railway.json, GitHub Actions) | ✅ Done |
 | 18 | Final testing + Polish | ⬜ |
 
 ---
