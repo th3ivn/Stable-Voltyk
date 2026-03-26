@@ -2,6 +2,8 @@ import { Bot, Context, SessionFlavor, session, GrammyError, HttpError } from "gr
 import type { Database } from "./db/client.js";
 import { logger } from "./utils/logger.js";
 import type { Logger } from "./utils/logger.js";
+import { increment, recordDuration } from "./services/metrics.js";
+import { notifyAdmins } from "./services/admin-notify.js";
 
 // ============================================================
 // Session data (wizard state + temp data)
@@ -47,7 +49,7 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
     }),
   );
 
-  // Inject db + requestId + logger into context
+  // Inject db + requestId + logger into context, track metrics
   bot.use(async (ctx, next) => {
     ctx.db = db;
     ctx.requestId = crypto.randomUUID();
@@ -55,14 +57,24 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
       requestId: ctx.requestId,
       userId: ctx.from?.id,
       chatId: ctx.chat?.id,
-      updateType: ctx.update ? Object.keys(ctx.update).filter((k) => k !== "update_id")[0] : "unknown",
     }) as Logger;
-    ctx.log.info("Incoming update");
+
+    // Track incoming update types
+    if (ctx.callbackQuery !== undefined) {
+      increment("callbacksProcessed");
+    } else if (ctx.message !== undefined) {
+      increment("messagesReceived");
+    }
+
     const start = Date.now();
     try {
       await next();
     } finally {
-      ctx.log.info({ durationMs: Date.now() - start }, "Update processed");
+      const duration = Date.now() - start;
+      recordDuration(duration);
+      if (duration > 1000) {
+        ctx.log.warn({ durationMs: duration }, "Slow update processing");
+      }
     }
   });
 
@@ -71,16 +83,32 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
     const ctx = err.ctx;
     const e = err.error;
 
+    increment("errors");
+
     if (e instanceof GrammyError) {
-      // Ignore "message is not modified" errors
-      if (e.description.includes("message is not modified")) {
+      // Ignore common non-critical errors
+      if (
+        e.description.includes("message is not modified") ||
+        e.description.includes("query is too old")
+      ) {
         return;
       }
-      logger.error({ error: e.description, method: e.method }, "Grammy API error");
+      // Log blocked users as warn, not error
+      if (e.description.includes("bot was blocked") || e.description.includes("chat not found")) {
+        ctx.log?.warn({ error: e.description, method: e.method }, "User unavailable");
+        return;
+      }
+      ctx.log?.error({ error: e.description, method: e.method }, "Telegram API error");
     } else if (e instanceof HttpError) {
-      logger.error({ error: e.message }, "HTTP error");
+      ctx.log?.error({ error: e.message }, "HTTP error");
     } else {
-      logger.error({ error: e }, "Unhandled error");
+      // Unhandled/unexpected error — notify admins
+      logger.error({ error: e, userId: ctx.from?.id }, "Unhandled error");
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      void notifyAdmins(
+        `Unhandled error in handler\n\nUser: ${ctx.from?.id ?? "unknown"}\n<code>${errorMsg.slice(0, 200)}</code>`,
+        "error",
+      );
     }
 
     // Try to notify user

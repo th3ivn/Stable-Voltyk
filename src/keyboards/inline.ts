@@ -1,15 +1,5 @@
 import { InlineKeyboard } from "grammy";
-import { EMOJI } from "../constants/emoji.js";
 import { REGIONS, STANDARD_QUEUES, KYIV_EXTRA_QUEUES } from "../constants/regions.js";
-
-// ============================================================
-// Helper: button with custom emoji icon
-// ============================================================
-function emojiBtn(text: string, emojiId: string, callbackData: string): InlineKeyboard {
-  // grammY doesn't support icon_custom_emoji_id directly on InlineKeyboardButton
-  // so we return a keyboard that can be merged. Use text with fallback.
-  return new InlineKeyboard().text(text, callbackData);
-}
 
 // ============================================================
 // Wizard: Region selection
@@ -414,6 +404,98 @@ export function channelConnectInstructionKeyboard(): InlineKeyboard {
     .row();
 }
 
+export function channelInfoKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelEditInputKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("❌ Скасувати", "channel_cancel_edit").row();
+}
+
+export function channelFormatKeyboard(options: {
+  pictureOnly: boolean;
+  deleteOldMessage: boolean;
+}): InlineKeyboard {
+  const on = "✅";
+  const off = "❌";
+  return new InlineKeyboard()
+    .text(
+      `${options.pictureOnly ? on : off} Тільки зображення`,
+      "channel_toggle_picture_only",
+    )
+    .row()
+    .text(
+      `${options.deleteOldMessage ? on : off} Видаляти старе повідомлення`,
+      "channel_toggle_delete_old",
+    )
+    .row()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelNotificationsKeyboard(settings: {
+  chNotifySchedule: boolean;
+  chNotifyRemindOff: boolean;
+  chNotifyRemindOn: boolean;
+  chNotifyFactOff: boolean;
+  chNotifyFactOn: boolean;
+  chRemind15m: boolean;
+  chRemind30m: boolean;
+  chRemind1h: boolean;
+}): InlineKeyboard {
+  const on = "✅";
+  const off = "❌";
+  return new InlineKeyboard()
+    .text(
+      `${settings.chNotifySchedule ? on : off} Оновлення графіків`,
+      "ch_toggle_schedule",
+    )
+    .row()
+    .text(`${settings.chRemind1h ? on : off} 1 год`, "ch_time_60")
+    .text(`${settings.chRemind30m ? on : off} 30 хв`, "ch_time_30")
+    .text(`${settings.chRemind15m ? on : off} 15 хв`, "ch_time_15")
+    .row()
+    .text(
+      `${settings.chNotifyRemindOff ? on : off} Нагад. перед вимкн.`,
+      "ch_toggle_remind_off",
+    )
+    .text(
+      `${settings.chNotifyRemindOn ? on : off} Нагад. перед вкл.`,
+      "ch_toggle_remind_on",
+    )
+    .row()
+    .text(
+      `${settings.chNotifyFactOff ? on : off} Факт. вимкнення`,
+      "ch_toggle_fact_off",
+    )
+    .text(
+      `${settings.chNotifyFactOn ? on : off} Факт. увімкнення`,
+      "ch_toggle_fact_on",
+    )
+    .row()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function channelTestKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("← Назад", "settings_channel")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function pendingChannelKeyboard(pendingId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ Підключити", `pending_channel_confirm_${pendingId}`)
+    .text("❌ Відхилити", `pending_channel_reject_${pendingId}`)
+    .row();
+}
+
 // ============================================================
 // Stats
 // ============================================================
@@ -551,6 +633,94 @@ export function adminBackKeyboard(): InlineKeyboard {
     .text("← Назад", "settings_admin")
     .text("⤴ Меню", "back_to_main")
     .row();
+}
+
+export function adminAnalyticsKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📈 За тиждень", "admin_analytics_week")
+    .text("📊 За місяць", "admin_analytics_month")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminUsersKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📊 Статистика", "admin_users_stats")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminBroadcastKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("❌ Скасувати", "admin_broadcast_cancel")
+    .row();
+}
+
+export function adminBroadcastConfirmKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ Надіслати", "admin_broadcast_send")
+    .text("❌ Скасувати", "admin_broadcast_cancel")
+    .row();
+}
+
+export function adminSettingsKeyboard(options: {
+  registrationOpen: boolean;
+  scheduleInterval: number;
+  powerInterval: number;
+  debounceMinutes: number;
+}): InlineKeyboard {
+  const regStatus = options.registrationOpen ? "✅" : "❌";
+  return new InlineKeyboard()
+    .text(`${regStatus} Реєстрація`, "admin_toggle_registration")
+    .row()
+    .text(`⏱ Графік: ${options.scheduleInterval}с`, "admin_set_schedule_interval")
+    .row()
+    .text(`📡 IP: ${options.powerInterval}с`, "admin_set_power_interval")
+    .row()
+    .text(`⏳ Debounce: ${options.debounceMinutes}хв`, "admin_set_debounce")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminMaintenanceKeyboard(isMaintenanceMode: boolean): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  if (isMaintenanceMode) {
+    kb.text("✅ Вимкнути тех. роботи", "admin_maintenance_off").row();
+  } else {
+    kb.text("🔧 Увімкнути тех. роботи", "admin_maintenance_on").row();
+  }
+  kb.text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+  return kb;
+}
+
+export function adminRouterKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📡 Перевірити", "admin_router_ping")
+    .row()
+    .text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+}
+
+export function adminPauseKeyboard(isPaused: boolean): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  if (isPaused) {
+    kb.text("▶️ Відновити бота", "admin_pause_off").row();
+  } else {
+    kb.text("⏸ Поставити на паузу", "admin_pause_on").row();
+  }
+  kb.text("← Назад", "settings_admin")
+    .text("⤴ Меню", "back_to_main")
+    .row();
+  return kb;
 }
 
 // ============================================================

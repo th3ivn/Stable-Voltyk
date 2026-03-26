@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { Database } from "../client.js";
 import {
   users,
@@ -6,6 +6,7 @@ import {
   userChannelConfig,
   userPowerTracking,
   userMessageTracking,
+  pendingChannels,
 } from "../schema.js";
 
 // ============================================================
@@ -260,4 +261,51 @@ export async function getUsersWithIp(db: Database) {
     })
     .from(users)
     .where(eq(users.isActive, true));
+}
+
+// ============================================================
+// Pending channels
+// ============================================================
+export async function createPendingChannel(
+  db: Database,
+  userId: number,
+  channelId: string,
+  channelTitle: string,
+) {
+  const [row] = await db
+    .insert(pendingChannels)
+    .values({ userId, channelId, channelTitle })
+    .returning();
+  return row ?? null;
+}
+
+export async function findPendingChannel(db: Database, id: number) {
+  const rows = await db
+    .select()
+    .from(pendingChannels)
+    .where(eq(pendingChannels.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function deletePendingChannel(db: Database, id: number) {
+  await db.delete(pendingChannels).where(eq(pendingChannels.id, id));
+}
+
+export async function findPendingChannelByChannelId(
+  db: Database,
+  userId: number,
+  channelId: string,
+) {
+  const rows = await db
+    .select()
+    .from(pendingChannels)
+    .where(
+      and(
+        eq(pendingChannels.userId, userId),
+        eq(pendingChannels.channelId, channelId),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
 }
