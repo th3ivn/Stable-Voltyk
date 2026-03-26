@@ -112,10 +112,9 @@ export async function runPingCycle(): Promise<{
   let errors = 0;
 
   const promises = targets.map(async (target) => {
+    await acquireConcurrencySlot();
     try {
-      await acquireConcurrencySlot();
       const isOnline = await pingHost(target.routerIp);
-      releaseConcurrencySlot();
 
       const newState: "online" | "offline" = isOnline ? "online" : "offline";
       if (isOnline) online++;
@@ -123,12 +122,13 @@ export async function runPingCycle(): Promise<{
 
       await handleStateChange(target, newState);
     } catch (err) {
-      releaseConcurrencySlot();
       errors++;
       logger.warn(
         { error: err, telegramId: target.telegramId, ip: target.routerIp },
         "Ping error",
       );
+    } finally {
+      releaseConcurrencySlot();
     }
   });
 
