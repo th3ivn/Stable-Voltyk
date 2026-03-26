@@ -73,23 +73,21 @@ export function buildNotificationSettingsMessage(settings: {
   remind1h: boolean;
   remind30m: boolean;
   remind15m: boolean;
-  factOff: boolean;
-  factOn: boolean;
-  remindOff: boolean;
-  remindOn: boolean;
+  fact: boolean;
+  hasIp: boolean;
 }): string {
   const on = "✅";
   const off = "❌";
+  const factLabel = settings.hasIp ? "Фактично за IP-адресою" : "Фактично за графіком";
 
   return (
     `${tgEmoji(EMOJI.BELL, "🔔")} Керування сповіщеннями\n\n` +
     `${tgEmoji(EMOJI.SCHEDULE_CHANGES, "📈")} Оновлення графіків — ${settings.scheduleChanges ? on : off}\n\n` +
-    `${tgEmoji(EMOJI.HOURGLASS, "⏳")} Нагадування про події перед (вимкнення / відновлення):\n` +
+    `${tgEmoji(EMOJI.HOURGLASS, "⏳")} Нагадування про події:\n` +
     `├ За 1 год — ${settings.remind1h ? on : off}\n` +
     `├ За 30 хв — ${settings.remind30m ? on : off}\n` +
     `├ За 15 хв — ${settings.remind15m ? on : off}\n` +
-    `└ Фактично за IP-адресою — ${settings.factOff ? on : off}\n\n` +
-    `<i>Нагадування перед відкл. — ${settings.remindOff ? on : off} · перед вкл. — ${settings.remindOn ? on : off}</i>`
+    `└ ${factLabel} — ${settings.fact ? on : off}`
   );
 }
 

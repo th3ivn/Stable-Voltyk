@@ -14,6 +14,7 @@ import {
   statsKeyboard,
   statsBackKeyboard,
   settingsKeyboard,
+  regionChangeKeyboard,
 } from "../keyboards/inline.js";
 import {
   helpMessage,
@@ -26,7 +27,8 @@ import {
 import { formatScheduleMessage } from "../formatters/schedule.js";
 import { formatTimerPopup } from "../formatters/timer.js";
 import { EMOJI } from "../constants/emoji.js";
-import { tgEmoji, nowKyiv, formatDateKyiv, getDayNameKyiv, formatDuration } from "../utils/helpers.js";
+import { getRegionName } from "../constants/regions.js";
+import { tgEmoji, nowKyiv, formatDateKyiv, getDayNameKyiv, formatDuration, formatTimeAgo } from "../utils/helpers.js";
 import { config } from "../config.js";
 import {
   getScheduleData,
@@ -120,14 +122,31 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
     await sendScheduleView(ctx, user.region, user.queue);
   });
 
-  // Queue change from schedule view
+  // Queue change from schedule view → show region selection
   bot.callbackQuery("my_queues", async (ctx) => {
     await ctx.answerCallbackQuery();
     const telegramId = ctx.from?.id.toString();
     if (telegramId === undefined) return;
     const user = await findUserByTelegramId(ctx.db, telegramId);
     if (user === null) return;
-    await showMainMenu(ctx, user.id);
+
+    // Delete the schedule photo message first
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
+
+    const regionName = getRegionName(user.region);
+    const text =
+      `📍 Поточний регіон: <b>${regionName}</b>\n` +
+      `⚡ Черга: <b>${user.queue}</b>\n\n` +
+      `Оберіть новий регіон:`;
+
+    await ctx.reply(text, {
+      parse_mode: "HTML",
+      reply_markup: regionChangeKeyboard(),
+    });
   });
 
   // ============================================================
@@ -367,12 +386,14 @@ async function sendScheduleView(
 
   const parsed = parseScheduleForQueue(data, queue);
   const totalMinutes = parsed.today.reduce((sum, e) => sum + e.durationMinutes, 0);
+  const updatedAgo = data.lastUpdated.length > 0 ? formatTimeAgo(data.lastUpdated) : null;
   const caption = formatScheduleMessage({
     queue,
     date: dateStr,
     dayName,
     events: parsed.today,
     totalMinutesOff: totalMinutes,
+    updatedAgo,
   });
 
   // Try to fetch and send schedule image

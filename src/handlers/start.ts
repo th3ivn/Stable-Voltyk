@@ -250,7 +250,12 @@ async function finishWizard(ctx: BotContext): Promise<void> {
 
   const region = ctx.session.wizardRegion;
   const queue = ctx.session.wizardQueue;
-  if (region === undefined || queue === undefined) return;
+  if (region === undefined || queue === undefined) {
+    await ctx.editMessageText(
+      "⚠️ Сесія закінчилася. Будь ласка, почніть заново — /start",
+    );
+    return;
+  }
 
   // Create user
   const newUser = await createUser(ctx.db, {

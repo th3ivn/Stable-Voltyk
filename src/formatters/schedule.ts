@@ -15,12 +15,16 @@ export function formatScheduleMessage(options: {
   dayName: string; // "середа"
   events: ScheduleEvent[];
   totalMinutesOff: number;
+  updatedAgo?: string | null;
 }): string {
+  const updatedLine = options.updatedAgo != null ? `\n\n🕐 Оновлено: ${options.updatedAgo}` : "";
+
   if (options.events.length === 0) {
     return (
       `<i>💡 Графік відключень <b>на сьогодні, ${options.date} (${options.dayName}),</b> ` +
       `для черги ${options.queue}:</i>\n\n` +
-      `${tgEmoji(EMOJI.CHECK, "✅")} Відключень не заплановано`
+      `${tgEmoji(EMOJI.CHECK, "✅")} Відключень не заплановано` +
+      updatedLine
     );
   }
 
@@ -44,6 +48,7 @@ export function formatScheduleMessage(options: {
 
   const totalStr = formatEventDuration(options.totalMinutesOff);
   text += `Загалом без світла:<b> ~${totalStr}</b>`;
+  text += updatedLine;
 
   return text;
 }
