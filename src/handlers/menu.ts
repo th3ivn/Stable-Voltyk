@@ -1,3 +1,4 @@
+import { InputFile } from "grammy";
 import type { Bot } from "grammy";
 import type { BotContext } from "../bot.js";
 import { showMainMenu } from "./start.js";
@@ -22,10 +23,17 @@ import {
   statsWeekMessage,
   formatLiveStatusMessage,
 } from "../formatters/messages.js";
+import { formatScheduleMessage } from "../formatters/schedule.js";
 import { formatTimerPopup } from "../formatters/timer.js";
 import { EMOJI } from "../constants/emoji.js";
-import { tgEmoji } from "../utils/helpers.js";
+import { tgEmoji, nowKyiv, formatDateKyiv, getDayNameKyiv, formatDuration } from "../utils/helpers.js";
 import { config } from "../config.js";
+import {
+  getScheduleData,
+  getScheduleImage,
+  parseScheduleForQueue,
+  findNextEvent,
+} from "../services/api.js";
 
 export function registerMenuHandlers(bot: Bot<BotContext>): void {
   // Back to main menu
@@ -82,37 +90,39 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
     const user = await findUserByTelegramId(ctx.db, telegramId);
     if (user === null) return;
 
-    // For now show a placeholder — full schedule with image will be in Step 11 (API Service)
-    const text =
-      `<i>💡 Графік відключень для черги ${user.queue}:</i>\n\n` +
-      `⏳ Завантаження даних графіку...\n\n` +
-      `<i>Графік буде доступний після підключення API сервісу.</i>`;
-
-    try {
-      await ctx.editMessageText(text, {
-        parse_mode: "HTML",
-        reply_markup: scheduleKeyboard(),
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: "HTML",
-        reply_markup: scheduleKeyboard(),
-      });
-    }
+    await sendScheduleView(ctx, user.region, user.queue);
   });
 
   // Schedule check (refresh)
   bot.callbackQuery("schedule_check", async (ctx) => {
+    const telegramId = ctx.from?.id.toString();
+    if (telegramId === undefined) return;
+
+    const user = await findUserByTelegramId(ctx.db, telegramId);
+    if (user === null) return;
+
+    // Fetch fresh data (bypass cache by fetching directly)
+    const data = await getScheduleData(user.region);
+    if (data === null) {
+      await ctx.answerCallbackQuery({
+        text: "❌ Не вдалося отримати дані графіку",
+        show_alert: false,
+      });
+      return;
+    }
+
     await ctx.answerCallbackQuery({
-      text: "⏳ Перевірка оновлень буде доступна після підключення API сервісу.",
+      text: "✅ Дані актуальні",
       show_alert: false,
     });
+
+    // Re-render the schedule view
+    await sendScheduleView(ctx, user.region, user.queue);
   });
 
   // Queue change from schedule view
   bot.callbackQuery("my_queues", async (ctx) => {
     await ctx.answerCallbackQuery();
-    // Will redirect to settings_region in Step 8
     const telegramId = ctx.from?.id.toString();
     if (telegramId === undefined) return;
     const user = await findUserByTelegramId(ctx.db, telegramId);
@@ -124,14 +134,53 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
   // Timer (popup)
   // ============================================================
   bot.callbackQuery("menu_timer", async (ctx) => {
-    // Timer is always a popup (show_alert: true)
-    // For now, show placeholder — full timer with schedule data in Step 11
-    const text = formatTimerPopup({
-      hasPowerNow: true,
-      nextEventTime: null,
-      currentPeriod: null,
-      noEventsToday: true,
-    });
+    const telegramId = ctx.from?.id.toString();
+    if (telegramId === undefined) return;
+
+    const user = await findUserByTelegramId(ctx.db, telegramId);
+    if (user === null) {
+      await ctx.answerCallbackQuery({ text: "❌ Помилка", show_alert: false });
+      return;
+    }
+
+    const data = await getScheduleData(user.region);
+    if (data === null) {
+      await ctx.answerCallbackQuery({
+        text: "❌ Не вдалося завантажити дані графіку",
+        show_alert: true,
+      });
+      return;
+    }
+
+    const parsed = parseScheduleForQueue(data, user.queue);
+    const nextEvent = findNextEvent(parsed.today);
+
+    let text: string;
+    if (parsed.today.length === 0) {
+      // No events today
+      text = formatTimerPopup({
+        hasPowerNow: true,
+        nextEventTime: null,
+        currentPeriod: null,
+        noEventsToday: true,
+      });
+    } else if (nextEvent === null) {
+      // All events have passed
+      text = formatTimerPopup({
+        hasPowerNow: true,
+        nextEventTime: null,
+        currentPeriod: null,
+        noEventsToday: false,
+      });
+    } else {
+      const hasPowerNow = nextEvent.type === "off"; // Next event is off → currently have power
+      text = formatTimerPopup({
+        hasPowerNow,
+        nextEventTime: formatDuration(nextEvent.minutesUntil),
+        currentPeriod: { start: nextEvent.event.start, end: nextEvent.event.end },
+        noEventsToday: false,
+      });
+    }
 
     await ctx.answerCallbackQuery({
       text,
@@ -279,16 +328,91 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
     const user = await findUserByTelegramId(ctx.db, telegramId);
     if (user === null) return;
 
-    // Redirect to schedule view
-    const text =
-      `<i>💡 Графік відключень для черги ${user.queue}:</i>\n\n` +
-      `⏳ Завантаження даних графіку...`;
-
-    await ctx.editMessageText(text, {
-      parse_mode: "HTML",
-      reply_markup: scheduleKeyboard(),
-    });
+    await sendScheduleView(ctx, user.region, user.queue);
   });
+}
+
+// ============================================================
+// Schedule view helper
+// ============================================================
+
+async function sendScheduleView(
+  ctx: BotContext,
+  region: string,
+  queue: string,
+): Promise<void> {
+  const now = nowKyiv();
+  const dateStr = formatDateKyiv(now);
+  const dayName = getDayNameKyiv(now);
+
+  // Fetch schedule data
+  const data = await getScheduleData(region);
+  if (data === null) {
+    const fallbackText =
+      `<i>💡 Графік відключень для черги ${queue}:</i>\n\n` +
+      `❌ Не вдалося завантажити дані графіку.\nСпробуйте пізніше.`;
+    try {
+      await ctx.editMessageText(fallbackText, {
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    } catch {
+      await ctx.reply(fallbackText, {
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    }
+    return;
+  }
+
+  const parsed = parseScheduleForQueue(data, queue);
+  const totalMinutes = parsed.today.reduce((sum, e) => sum + e.durationMinutes, 0);
+  const caption = formatScheduleMessage({
+    queue,
+    date: dateStr,
+    dayName,
+    events: parsed.today,
+    totalMinutesOff: totalMinutes,
+  });
+
+  // Try to fetch and send schedule image
+  const image = await getScheduleImage(region, queue);
+
+  if (image !== null) {
+    // Send as photo with caption
+    try {
+      // Delete the previous message (text), then send photo
+      try {
+        await ctx.deleteMessage();
+      } catch {
+        // ignore
+      }
+      await ctx.replyWithPhoto(new InputFile(image, `schedule-${queue}.png`), {
+        caption,
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    } catch {
+      // Fallback to text if photo fails
+      await ctx.reply(caption, {
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    }
+  } else {
+    // No image available — send text only
+    try {
+      await ctx.editMessageText(caption, {
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    } catch {
+      await ctx.reply(caption, {
+        parse_mode: "HTML",
+        reply_markup: scheduleKeyboard(),
+      });
+    }
+  }
 }
 
 // ============================================================
