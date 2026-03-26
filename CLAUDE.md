@@ -18,7 +18,7 @@
 | 12 | Power Monitor (IP ping, debounce, state management, notifications) | ✅ Done |
 | 13 | Scheduler (croner jobs, schedule checks, reminders, cleanup) | ✅ Done |
 | 14 | Retry Queue + Branding (Telegram message retry, channel branding) | ✅ Done |
-| 15 | Entry point + Startup sequence (повний startup flow, graceful shutdown) | ⬜ |
+| 15 | Entry point + Startup sequence (повний startup flow, graceful shutdown) | ✅ Done |
 | 16 | Metrics + Health + Admin notifications | ⬜ |
 | 17 | Docker + Railway + CI (Dockerfile, railway.json, GitHub Actions) | ⬜ |
 | 18 | Final testing + Polish | ⬜ |
