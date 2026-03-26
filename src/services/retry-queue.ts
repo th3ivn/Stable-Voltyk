@@ -1,6 +1,8 @@
 import type { Bot, RawApi } from "grammy";
 import type { BotContext } from "../bot.js";
 import { logger } from "../utils/logger.js";
+import { increment } from "./metrics.js";
+import { notifyAdmins } from "./admin-notify.js";
 
 // ============================================================
 // Types
@@ -56,6 +58,7 @@ export function enqueueMessage(
   params: Record<string, unknown>,
   maxAttempts = MAX_ATTEMPTS,
 ): void {
+  increment("retryQueueEnqueued");
   queue.push({
     id: crypto.randomUUID(),
     chatId,
@@ -170,6 +173,7 @@ async function processQueue(): Promise<void> {
       try {
         // Call the Telegram API method
         await (bot.api.raw as unknown as Record<string, (params: Record<string, unknown>) => Promise<unknown>>)[msg.method]!(msg.params);
+        increment("messagesSent");
         processed++;
 
         // Rate limit: ~25 msg/sec
@@ -221,6 +225,8 @@ async function processQueue(): Promise<void> {
             "Send failed, retrying",
           );
         } else {
+          increment("retryQueueDropped");
+          increment("messagesFailed");
           logger.error(
             {
               chatId: msg.chatId,
@@ -229,6 +235,10 @@ async function processQueue(): Promise<void> {
               error: error.description,
             },
             "Message dropped after max attempts",
+          );
+          void notifyAdmins(
+            `Retry queue: message dropped after ${msg.attempts} attempts\nChat: ${String(msg.chatId)}\nMethod: ${msg.method}`,
+            "warn",
           );
         }
       }

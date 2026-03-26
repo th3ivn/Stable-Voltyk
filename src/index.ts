@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { config, allAdminIds } from "./config.js";
+import { config } from "./config.js";
 import { logger } from "./utils/logger.js";
 import { createBot } from "./bot.js";
 import { createDbConnection, checkDatabaseHealth } from "./db/client.js";
@@ -31,6 +31,8 @@ import { initPowerMonitor, stopPowerMonitor, getPowerMonitorStatus } from "./ser
 import { startScheduler, stopScheduler, getSchedulerStatus } from "./services/scheduler.js";
 import { initRetryQueue, stopRetryQueue, getRetryQueueStatus } from "./services/retry-queue.js";
 import { getCircuitBreakerState } from "./services/api.js";
+import { getMetrics, setGauge } from "./services/metrics.js";
+import { initAdminNotify, notifyAdmins } from "./services/admin-notify.js";
 
 // Express + grammY webhook
 import { webhookCallback } from "grammy";
@@ -57,7 +59,12 @@ async function main(): Promise<void> {
   const bot = createBot(config.BOT_TOKEN, db);
 
   // ============================================================
-  // 4. Register all handlers
+  // 4. Initialize admin notifications (before handlers, so services can use it)
+  // ============================================================
+  initAdminNotify(bot);
+
+  // ============================================================
+  // 5. Register all handlers
   // ============================================================
   registerStartHandlers(bot);
   registerMenuHandlers(bot);
@@ -80,7 +87,7 @@ async function main(): Promise<void> {
   registerChatMemberHandlers(bot);
 
   // ============================================================
-  // 5. Startup self-test
+  // 6. Startup self-test
   // ============================================================
   logger.info("Running startup self-test...");
 
@@ -88,6 +95,7 @@ async function main(): Promise<void> {
   if (!dbHealth.ok) {
     throw new Error("Startup check failed: Database");
   }
+  setGauge("dbLatencyMs", dbHealth.latencyMs);
   logger.info({ latencyMs: dbHealth.latencyMs }, "Database: OK");
 
   await bot.init();
@@ -108,7 +116,7 @@ async function main(): Promise<void> {
   logger.info("All startup checks passed");
 
   // ============================================================
-  // 6. Initialize services
+  // 7. Initialize services
   // ============================================================
 
   // Retry queue
@@ -121,7 +129,7 @@ async function main(): Promise<void> {
   startScheduler(db, bot);
 
   // ============================================================
-  // 7. Start bot (webhook or long polling)
+  // 8. Start bot (webhook or long polling)
   // ============================================================
   if (config.USE_WEBHOOK && config.WEBHOOK_URL.length > 0) {
     // Webhook mode (production)
@@ -139,6 +147,7 @@ async function main(): Promise<void> {
     // Health check endpoint
     app.get("/health", async (_req, res) => {
       const dbCheck = await checkDatabaseHealth(db);
+      setGauge("dbLatencyMs", dbCheck.latencyMs);
       const scheduler = getSchedulerStatus();
       const powerMonitor = getPowerMonitorStatus();
       const retryQueue = getRetryQueueStatus();
@@ -148,7 +157,7 @@ async function main(): Promise<void> {
 
       res.status(isHealthy ? 200 : 503).json({
         status: isHealthy ? "ok" : "degraded",
-        uptime: process.uptime(),
+        uptime: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         bot: bot.botInfo.username,
         database: { ok: dbCheck.ok, latencyMs: dbCheck.latencyMs },
@@ -159,20 +168,19 @@ async function main(): Promise<void> {
       });
     });
 
-    // Metrics endpoint
+    // Metrics endpoint (full metrics with counters, gauges, histograms)
     app.get("/metrics", (_req, res) => {
-      const scheduler = getSchedulerStatus();
-      const powerMonitor = getPowerMonitorStatus();
-      const retryQueue = getRetryQueueStatus();
+      const metrics = getMetrics();
 
+      // Enrich with service-specific info
       res.json({
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        scheduler,
-        powerMonitor,
-        retryQueue,
-        circuitBreaker: getCircuitBreakerState(),
-        memory: process.memoryUsage(),
+        ...metrics,
+        services: {
+          scheduler: getSchedulerStatus(),
+          powerMonitor: getPowerMonitorStatus(),
+          retryQueue: getRetryQueueStatus(),
+          circuitBreaker: getCircuitBreakerState(),
+        },
       });
     });
 
@@ -202,12 +210,12 @@ async function main(): Promise<void> {
   }
 
   // ============================================================
-  // 8. Notify admins
+  // 9. Notify admins
   // ============================================================
-  await notifyAdmins(bot, "🟢 Bot started", "info");
+  await notifyAdmins("🟢 Bot started", "info");
 
   // ============================================================
-  // 9. Graceful shutdown
+  // 10. Graceful shutdown
   // ============================================================
   let isShuttingDown = false;
 
@@ -235,7 +243,7 @@ async function main(): Promise<void> {
 
     // 5. Notify admins (best effort)
     try {
-      await notifyAdmins(bot, "🔴 Bot stopped", "info");
+      await notifyAdmins("🔴 Bot stopped", "info");
     } catch {
       // Ignore — bot may be stopped already
     }
@@ -250,36 +258,16 @@ async function main(): Promise<void> {
   // Catch unhandled errors
   process.on("unhandledRejection", (reason) => {
     logger.error({ error: reason }, "Unhandled rejection");
+    void notifyAdmins(
+      `Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}`,
+      "error",
+    );
   });
 
   process.on("uncaughtException", (error) => {
     logger.fatal({ error }, "Uncaught exception — shutting down");
     void shutdown("uncaughtException");
   });
-}
-
-// ============================================================
-// Admin notification helper
-// ============================================================
-
-async function notifyAdmins(
-  bot: { api: { sendMessage: (chatId: number, text: string, options?: Record<string, unknown>) => Promise<unknown> } },
-  message: string,
-  level: "info" | "warn" | "error" = "info",
-): Promise<void> {
-  const emoji = { info: "ℹ️", warn: "⚠️", error: "🚨" };
-  const text =
-    `${emoji[level]} <b>Voltyk Bot</b>\n\n` +
-    `${message}\n\n` +
-    `<i>${new Date().toISOString()}</i>`;
-
-  for (const adminId of allAdminIds) {
-    try {
-      await bot.api.sendMessage(adminId, text, { parse_mode: "HTML" });
-    } catch (err) {
-      logger.warn({ adminId, error: err }, "Failed to notify admin");
-    }
-  }
 }
 
 // ============================================================

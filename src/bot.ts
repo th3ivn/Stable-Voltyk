@@ -2,6 +2,8 @@ import { Bot, Context, SessionFlavor, session, GrammyError, HttpError } from "gr
 import type { Database } from "./db/client.js";
 import { logger } from "./utils/logger.js";
 import type { Logger } from "./utils/logger.js";
+import { increment, recordDuration } from "./services/metrics.js";
+import { notifyAdmins } from "./services/admin-notify.js";
 
 // ============================================================
 // Session data (wizard state + temp data)
@@ -47,7 +49,7 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
     }),
   );
 
-  // Inject db + requestId + logger into context
+  // Inject db + requestId + logger into context, track metrics
   bot.use(async (ctx, next) => {
     ctx.db = db;
     ctx.requestId = crypto.randomUUID();
@@ -56,11 +58,20 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
       userId: ctx.from?.id,
       chatId: ctx.chat?.id,
     }) as Logger;
+
+    // Track incoming update types
+    if (ctx.callbackQuery !== undefined) {
+      increment("callbacksProcessed");
+    } else if (ctx.message !== undefined) {
+      increment("messagesReceived");
+    }
+
     const start = Date.now();
     try {
       await next();
     } finally {
       const duration = Date.now() - start;
+      recordDuration(duration);
       if (duration > 1000) {
         ctx.log.warn({ durationMs: duration }, "Slow update processing");
       }
@@ -71,6 +82,8 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
   bot.catch((err) => {
     const ctx = err.ctx;
     const e = err.error;
+
+    increment("errors");
 
     if (e instanceof GrammyError) {
       // Ignore common non-critical errors
@@ -89,7 +102,13 @@ export function createBot(token: string, db: Database): Bot<BotContext> {
     } else if (e instanceof HttpError) {
       ctx.log?.error({ error: e.message }, "HTTP error");
     } else {
+      // Unhandled/unexpected error — notify admins
       logger.error({ error: e, userId: ctx.from?.id }, "Unhandled error");
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      void notifyAdmins(
+        `Unhandled error in handler\n\nUser: ${ctx.from?.id ?? "unknown"}\n<code>${errorMsg.slice(0, 200)}</code>`,
+        "error",
+      );
     }
 
     // Try to notify user

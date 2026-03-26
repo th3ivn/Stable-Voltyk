@@ -3,6 +3,8 @@ import { logger } from "../utils/logger.js";
 import { sha256 } from "../utils/helpers.js";
 import { AppError, ErrorCode, CircuitBreakerOpenError } from "../utils/errors.js";
 import type { ScheduleEvent } from "../formatters/schedule.js";
+import { notifyAdmins } from "./admin-notify.js";
+import { increment } from "./metrics.js";
 
 // ============================================================
 // Types
@@ -65,6 +67,7 @@ class CircuitBreaker {
     private readonly name: string,
     private readonly failureThreshold: number = 5,
     private readonly resetTimeoutMs: number = 60_000,
+    private readonly onOpen?: () => void,
   ) {}
 
   async execute<T>(fn: () => Promise<T>): Promise<T> {
@@ -90,6 +93,7 @@ class CircuitBreaker {
   private onSuccess(): void {
     if (this.state === CircuitState.HALF_OPEN) {
       logger.info({ breaker: this.name }, "Circuit breaker closed (recovered)");
+      void notifyAdmins(`Circuit breaker <b>${this.name}</b> recovered (CLOSED)`, "info");
     }
     this.failureCount = 0;
     this.state = CircuitState.CLOSED;
@@ -99,11 +103,15 @@ class CircuitBreaker {
     this.failureCount++;
     this.lastFailureTime = Date.now();
     if (this.failureCount >= this.failureThreshold) {
+      const wasAlreadyOpen = this.state === CircuitState.OPEN;
       this.state = CircuitState.OPEN;
-      logger.error(
-        { breaker: this.name, failures: this.failureCount },
-        "Circuit breaker opened",
-      );
+      if (!wasAlreadyOpen) {
+        logger.error(
+          { breaker: this.name, failures: this.failureCount },
+          "Circuit breaker opened",
+        );
+        this.onOpen?.();
+      }
     }
   }
 
@@ -159,7 +167,9 @@ class TtlCache<T> {
 // Module state
 // ============================================================
 
-const githubBreaker = new CircuitBreaker("github", 5, 60_000);
+const githubBreaker = new CircuitBreaker("github", 5, 60_000, () => {
+  void notifyAdmins("Circuit breaker <b>github</b> OPEN — data source unavailable", "error");
+});
 const jsonCache = new TtlCache<RegionData>(120_000, 20);
 const imageCache = new TtlCache<Buffer>(120_000, 50);
 let lastETag: string | null = null;

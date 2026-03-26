@@ -25,6 +25,8 @@ import {
 import { runPingCycle } from "./power-monitor.js";
 import { formatScheduleMessage, type ScheduleEvent } from "../formatters/schedule.js";
 import { formatDuration, nowKyiv, formatDateKyiv, getDayNameKyiv } from "../utils/helpers.js";
+import { increment } from "./metrics.js";
+import { notifyAdmins } from "./admin-notify.js";
 
 // ============================================================
 // Module state
@@ -55,6 +57,8 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
       new Cron(cronExpr, { timezone: "Europe/Kyiv", protect: true }, () => {
         void runScheduleCheck().catch((err) => {
           logger.error({ error: err }, "Schedule check job failed");
+          increment("errors");
+          void notifyAdmins(`Schedule check job failed: ${err instanceof Error ? err.message : String(err)}`, "error");
         });
       }),
     );
@@ -69,6 +73,8 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
       new Cron(cronExpr, { timezone: "Europe/Kyiv", protect: true }, () => {
         void runPowerCheck().catch((err) => {
           logger.error({ error: err }, "Power check job failed");
+          increment("errors");
+          void notifyAdmins(`Power check job failed: ${err instanceof Error ? err.message : String(err)}`, "error");
         });
       }),
     );
@@ -134,6 +140,8 @@ export function getSchedulerStatus(): { isRunning: boolean; jobCount: number } {
 async function runScheduleCheck(): Promise<void> {
   if (db === null || bot === null || !isRunning) return;
 
+  increment("scheduleChecks");
+
   // Check if there are updates via GitHub commits API
   const hasUpdates = await checkForUpdates();
   if (!hasUpdates) return;
@@ -190,6 +198,7 @@ async function processScheduleForQueue(
   if (oldHash !== null && oldHash !== newHash) {
     // Schedule changed — record history and notify users
     await addScheduleHistory(db, region, queue, newHash, JSON.stringify(parsed));
+    increment("scheduleChangesDetected");
     logger.info({ region, queue, oldHash, newHash }, "Schedule changed, notifying users");
 
     await notifyScheduleChange(region, queue, parsed.today);
@@ -248,7 +257,11 @@ async function notifyScheduleChange(
 async function runPowerCheck(): Promise<void> {
   if (!isRunning) return;
 
+  increment("pingChecks");
   const result = await runPingCycle();
+  if (result.errors > 0) {
+    increment("pingFailures", result.errors);
+  }
   if (result.total > 0) {
     logger.debug(
       {
