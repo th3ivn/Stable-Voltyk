@@ -4,8 +4,7 @@ import type { BotContext } from "../bot.js";
 import type { Database } from "../db/client.js";
 import { config } from "../config.js";
 import { logger } from "../utils/logger.js";
-import { getSettingInt } from "../db/queries/settings.js";
-import { getUsersWithIp, findUserByTelegramId } from "../db/queries/users.js";
+import { getUsersWithIp } from "../db/queries/users.js";
 import {
   getScheduleCheck,
   upsertScheduleCheck,
@@ -24,7 +23,7 @@ import {
 } from "./api.js";
 import { runPingCycle } from "./power-monitor.js";
 import { formatScheduleMessage, type ScheduleEvent } from "../formatters/schedule.js";
-import { formatDuration, nowKyiv, formatDateKyiv, getDayNameKyiv } from "../utils/helpers.js";
+import { nowKyiv, formatDateKyiv, getDayNameKyiv } from "../utils/helpers.js";
 import { increment } from "./metrics.js";
 import { notifyAdmins } from "./admin-notify.js";
 
@@ -55,7 +54,7 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
     const cronExpr = `*/${Math.max(scheduleIntervalS, 10)} * * * * *`;
     jobs.push(
       new Cron(cronExpr, { timezone: "Europe/Kyiv", protect: true }, () => {
-        void runScheduleCheck().catch((err) => {
+        void runScheduleCheck().catch((err: unknown) => {
           logger.error({ error: err }, "Schedule check job failed");
           increment("errors");
           void notifyAdmins(`Schedule check job failed: ${err instanceof Error ? err.message : String(err)}`, "error");
@@ -71,7 +70,7 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
     const cronExpr = `*/${Math.max(powerIntervalS, 10)} * * * * *`;
     jobs.push(
       new Cron(cronExpr, { timezone: "Europe/Kyiv", protect: true }, () => {
-        void runPowerCheck().catch((err) => {
+        void runPowerCheck().catch((err: unknown) => {
           logger.error({ error: err }, "Power check job failed");
           increment("errors");
           void notifyAdmins(`Power check job failed: ${err instanceof Error ? err.message : String(err)}`, "error");
@@ -84,7 +83,7 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
   // 3. Reminders check (every minute)
   jobs.push(
     new Cron("0 * * * * *", { timezone: "Europe/Kyiv", protect: true }, () => {
-      void runReminderCheck().catch((err) => {
+      void runReminderCheck().catch((err: unknown) => {
         logger.error({ error: err }, "Reminder check job failed");
       });
     }),
@@ -94,7 +93,7 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
   // 4. Daily cleanup at 03:00 Kyiv time
   jobs.push(
     new Cron("0 0 3 * * *", { timezone: "Europe/Kyiv" }, () => {
-      void runDailyCleanup().catch((err) => {
+      void runDailyCleanup().catch((err: unknown) => {
         logger.error({ error: err }, "Daily cleanup job failed");
       });
     }),
@@ -104,7 +103,7 @@ export function startScheduler(database: Database, botInstance: Bot<BotContext>)
   // 5. Daily schedule notification at 06:00 Kyiv time
   jobs.push(
     new Cron("0 0 6 * * *", { timezone: "Europe/Kyiv" }, () => {
-      void runMorningNotification().catch((err) => {
+      void runMorningNotification().catch((err: unknown) => {
         logger.error({ error: err }, "Morning notification job failed");
       });
     }),

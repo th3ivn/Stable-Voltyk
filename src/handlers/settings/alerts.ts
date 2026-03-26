@@ -1,14 +1,12 @@
 import type { Bot } from "grammy";
 import type { BotContext } from "../../bot.js";
 import {
-  findUserByTelegramId,
   findUserWithRelations,
   updateNotificationSettings,
 } from "../../db/queries/users.js";
 import {
   alertsTargetKeyboard,
   notificationSettingsKeyboard,
-  backAndMenuKeyboard,
 } from "../../keyboards/inline.js";
 import { buildNotificationSettingsMessage } from "../../formatters/messages.js";
 

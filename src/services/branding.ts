@@ -2,7 +2,7 @@ import type { Bot } from "grammy";
 import type { BotContext } from "../bot.js";
 import type { Database } from "../db/client.js";
 import { logger } from "../utils/logger.js";
-import { updateChannelConfig, findUserWithRelations } from "../db/queries/users.js";
+import { updateChannelConfig } from "../db/queries/users.js";
 import { eq, isNotNull, and, sql } from "drizzle-orm";
 import { users, userChannelConfig } from "../db/schema.js";
 
@@ -108,7 +108,7 @@ async function getActiveChannels(db: Database): Promise<ChannelBrandingData[]> {
 
   return rows.map((r) => ({
     ...r,
-    channelId: r.channelId!,
+    channelId: r.channelId ?? "",
   }));
 }
 

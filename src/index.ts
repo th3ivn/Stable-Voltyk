@@ -105,7 +105,7 @@ async function main(): Promise<void> {
   try {
     const ghUrl = config.DATA_URL_TEMPLATE.replace("{region}", "kyiv");
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => { controller.abort(); }, 5000);
     const ghResponse = await fetch(ghUrl, { method: "HEAD", signal: controller.signal });
     clearTimeout(timeout);
     logger.info({ status: ghResponse.status }, "GitHub API: OK");
@@ -205,7 +205,7 @@ async function main(): Promise<void> {
     // Long polling mode (development)
     await bot.api.deleteWebhook();
     void bot.start({
-      onStart: () => logger.info("Bot started (long polling)"),
+      onStart: () => { logger.info("Bot started (long polling)"); },
     });
   }
 
@@ -274,7 +274,7 @@ async function main(): Promise<void> {
 // Entry point
 // ============================================================
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   logger.error({ error: err }, "Fatal startup error");
   process.exit(1);
 });

@@ -1,5 +1,5 @@
 import type { Bot } from "grammy";
-import type { BotContext, SessionData } from "../../bot.js";
+import type { BotContext } from "../../bot.js";
 import { isAdmin } from "../../config.js";
 import { getActiveUserTelegramIds } from "../../db/queries/admin.js";
 import {

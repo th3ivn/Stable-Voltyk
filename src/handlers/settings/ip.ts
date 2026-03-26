@@ -8,7 +8,6 @@ import {
   ipNoIpKeyboard,
   ipWithIpKeyboard,
   ipConfirmDeleteKeyboard,
-  backAndMenuKeyboard,
 } from "../../keyboards/inline.js";
 import {
   ipNoIpMessage,
@@ -135,7 +134,7 @@ export function registerIpHandlers(bot: Bot<BotContext>): void {
 
   // Text message handler for IP input
   bot.on("message:text", async (ctx, next) => {
-    if (!ctx.session.awaitingIpInput) {
+    if (ctx.session.awaitingIpInput !== true) {
       await next();
       return;
     }

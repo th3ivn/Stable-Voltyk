@@ -13,7 +13,6 @@ import {
   statsKeyboard,
   statsBackKeyboard,
   settingsKeyboard,
-  backToMainKeyboard,
 } from "../keyboards/inline.js";
 import {
   helpMessage,
@@ -23,7 +22,7 @@ import {
   statsWeekMessage,
   formatLiveStatusMessage,
 } from "../formatters/messages.js";
-import { formatTimerPopup, type TimerEvent } from "../formatters/timer.js";
+import { formatTimerPopup } from "../formatters/timer.js";
 import { EMOJI } from "../constants/emoji.js";
 import { tgEmoji } from "../utils/helpers.js";
 import { config } from "../config.js";

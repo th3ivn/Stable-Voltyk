@@ -2,7 +2,7 @@ import type { Bot } from "grammy";
 import type { BotContext } from "../../bot.js";
 import { isAdmin } from "../../config.js";
 import { getSettingBool, setSetting } from "../../db/queries/settings.js";
-import { adminMaintenanceKeyboard, adminBackKeyboard } from "../../keyboards/inline.js";
+import { adminMaintenanceKeyboard } from "../../keyboards/inline.js";
 import { adminMaintenanceMessage } from "../../formatters/messages.js";
 
 export function registerAdminMaintenanceHandlers(bot: Bot<BotContext>): void {

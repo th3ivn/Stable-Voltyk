@@ -1,15 +1,5 @@
 import { InlineKeyboard } from "grammy";
-import { EMOJI } from "../constants/emoji.js";
 import { REGIONS, STANDARD_QUEUES, KYIV_EXTRA_QUEUES } from "../constants/regions.js";
-
-// ============================================================
-// Helper: button with custom emoji icon
-// ============================================================
-function emojiBtn(text: string, emojiId: string, callbackData: string): InlineKeyboard {
-  // grammY doesn't support icon_custom_emoji_id directly on InlineKeyboardButton
-  // so we return a keyboard that can be merged. Use text with fallback.
-  return new InlineKeyboard().text(text, callbackData);
-}
 
 // ============================================================
 // Wizard: Region selection

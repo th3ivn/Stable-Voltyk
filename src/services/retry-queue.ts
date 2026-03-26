@@ -143,7 +143,7 @@ function scheduleProcessing(): void {
   if (!isRunning) return;
   processTimer = setTimeout(() => {
     void processQueue()
-      .catch((err) => {
+      .catch((err: unknown) => {
         logger.error({ error: err }, "Retry queue processing error");
       })
       .finally(() => {
@@ -172,7 +172,12 @@ async function processQueue(): Promise<void> {
 
       try {
         // Call the Telegram API method
-        await (bot.api.raw as unknown as Record<string, (params: Record<string, unknown>) => Promise<unknown>>)[msg.method]!(msg.params);
+        const rawApi = bot.api.raw as unknown as Record<string, (params: Record<string, unknown>) => Promise<unknown>>;
+        const method = rawApi[msg.method];
+        if (method === undefined) {
+          throw new Error(`Unknown Telegram API method: ${msg.method}`);
+        }
+        await method(msg.params);
         increment("messagesSent");
         processed++;
 

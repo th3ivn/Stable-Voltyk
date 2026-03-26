@@ -9,7 +9,6 @@ import {
   upsertPowerState,
   addPowerHistoryEntry,
   startOutage,
-  addPingErrorAlert,
 } from "../db/queries/power.js";
 import { updatePowerTracking } from "../db/queries/users.js";
 
@@ -99,7 +98,7 @@ export async function runPingCycle(): Promise<{
     .map((u) => ({
       userId: u.id,
       telegramId: u.telegramId,
-      routerIp: u.routerIp!,
+      routerIp: u.routerIp ?? "",
       region: u.region,
       queue: u.queue,
     }));
@@ -184,7 +183,7 @@ export async function pingHost(host: string): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(
-      () => controller.abort(),
+      () => { controller.abort(); },
       config.POWER_PING_TIMEOUT_MS,
     );
     const response = await fetch(url, {

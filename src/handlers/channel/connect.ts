@@ -40,7 +40,7 @@ export function registerChannelConnectHandlers(bot: Bot<BotContext>): void {
     await deletePendingChannel(ctx.db, pendingId);
 
     await ctx.editMessageText(
-      `✅ Канал "${pending.channelTitle}" успішно підключено!`,
+      `✅ Канал "${pending.channelTitle ?? ""}" успішно підключено!`,
     );
 
     // Show main menu

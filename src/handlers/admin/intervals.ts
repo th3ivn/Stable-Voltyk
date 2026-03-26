@@ -1,8 +1,8 @@
 import type { Bot } from "grammy";
 import type { BotContext } from "../../bot.js";
 import { isAdmin } from "../../config.js";
-import { getSetting, setSetting, getSettingBool, getSettingInt } from "../../db/queries/settings.js";
-import { adminSettingsKeyboard, adminBackKeyboard } from "../../keyboards/inline.js";
+import { setSetting, getSettingBool, getSettingInt } from "../../db/queries/settings.js";
+import { adminSettingsKeyboard } from "../../keyboards/inline.js";
 import { adminSettingsMessage } from "../../formatters/messages.js";
 import { config } from "../../config.js";
 

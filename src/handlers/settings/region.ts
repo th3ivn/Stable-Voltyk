@@ -5,7 +5,6 @@ import { getRegionName } from "../../constants/regions.js";
 import {
   regionChangeKeyboard,
   queueChangeKeyboard,
-  wizardQueueKeyboard,
 } from "../../keyboards/inline.js";
 
 export function registerRegionHandlers(bot: Bot<BotContext>): void {

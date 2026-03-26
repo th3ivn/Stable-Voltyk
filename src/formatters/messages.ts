@@ -323,7 +323,7 @@ export function channelInfoMessage(options: {
       ? "🟢 Активний"
       : "🔴 Відключено";
 
-  let text =
+  const text =
     `📺 <b>Інформація про канал</b>\n\n` +
     `🆔 ID: <code>${options.channelId}</code>\n` +
     `📝 Назва: ${options.channelTitle ?? "—"}\n` +

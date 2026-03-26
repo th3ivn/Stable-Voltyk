@@ -4,7 +4,6 @@ import { sha256 } from "../utils/helpers.js";
 import { AppError, ErrorCode, CircuitBreakerOpenError } from "../utils/errors.js";
 import type { ScheduleEvent } from "../formatters/schedule.js";
 import { notifyAdmins } from "./admin-notify.js";
-import { increment } from "./metrics.js";
 
 // ============================================================
 // Types
@@ -352,7 +351,7 @@ async function fetchJson(region: string): Promise<RegionData> {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => { controller.abort(); }, 10_000);
 
   try {
     const response = await fetch(url, { headers, signal: controller.signal });
@@ -413,7 +412,7 @@ async function fetchImage(region: string, queue: string): Promise<Buffer> {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(() => { controller.abort(); }, 15_000);
 
   try {
     const response = await fetch(url, { headers, signal: controller.signal });
@@ -459,7 +458,7 @@ async function checkGitHubCommits(): Promise<{
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => { controller.abort(); }, 10_000);
 
   try {
     const response = await fetch(url, { headers, signal: controller.signal });
@@ -637,7 +636,7 @@ function timeToMinutes(time: string): number {
 }
 
 function calculateDurationMinutes(start: string, end: string): number {
-  let startM = timeToMinutes(start);
+  const startM = timeToMinutes(start);
   let endM = timeToMinutes(end);
   if (endM <= startM) endM += 24 * 60; // crosses midnight
   return endM - startM;
