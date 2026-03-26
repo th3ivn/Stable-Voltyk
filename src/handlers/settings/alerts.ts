@@ -54,34 +54,7 @@ export function registerAlertsHandlers(bot: Bot<BotContext>): void {
     const data = await findUserWithRelations(ctx.db, telegramId);
     if (data === null) return;
 
-    const cc = data.channelConfig;
-    const text = buildNotificationSettingsMessage({
-      scheduleChanges: cc?.chNotifySchedule ?? true,
-      remind1h: cc?.chRemind1h ?? false,
-      remind30m: cc?.chRemind30m ?? false,
-      remind15m: cc?.chRemind15m ?? true,
-      factOff: cc?.chNotifyFactOff ?? true,
-      factOn: cc?.chNotifyFactOn ?? true,
-      remindOff: cc?.chNotifyRemindOff ?? true,
-      remindOn: cc?.chNotifyRemindOn ?? true,
-    });
-
-    await ctx.editMessageText(text, {
-      parse_mode: "HTML",
-      reply_markup: notificationSettingsKeyboard(
-        {
-          scheduleChanges: cc?.chNotifySchedule ?? true,
-          remindOff: cc?.chNotifyRemindOff ?? true,
-          remindOn: cc?.chNotifyRemindOn ?? true,
-          factOff: cc?.chNotifyFactOff ?? true,
-          factOn: cc?.chNotifyFactOn ?? true,
-          remind15m: cc?.chRemind15m ?? true,
-          remind30m: cc?.chRemind30m ?? false,
-          remind1h: cc?.chRemind1h ?? false,
-        },
-        "notif_ch",
-      ),
-    });
+    await showChannelNotifSettings(ctx, data);
   });
 
   // Bot notification toggles
@@ -118,20 +91,23 @@ export function registerAlertsHandlers(bot: Bot<BotContext>): void {
   });
 }
 
+type UserWithRelations = NonNullable<Awaited<ReturnType<typeof findUserWithRelations>>>;
+
 async function showBotNotifSettings(
   ctx: BotContext,
-  data: NonNullable<Awaited<ReturnType<typeof findUserWithRelations>>>,
+  data: UserWithRelations,
 ): Promise<void> {
   const ns = data.notificationSettings;
+  const hasIp = data.user.routerIp != null && data.user.routerIp.length > 0;
+  const fact = (ns?.notifyFactOff ?? false) || (ns?.notifyFactOn ?? false);
+
   const text = buildNotificationSettingsMessage({
     scheduleChanges: ns?.notifyScheduleChanges ?? true,
     remind1h: ns?.remind1h ?? false,
     remind30m: ns?.remind30m ?? false,
     remind15m: ns?.remind15m ?? true,
-    factOff: ns?.notifyFactOff ?? true,
-    factOn: ns?.notifyFactOn ?? true,
-    remindOff: ns?.notifyRemindOff ?? true,
-    remindOn: ns?.notifyRemindOn ?? true,
+    fact,
+    hasIp,
   });
 
   await ctx.editMessageText(text, {
@@ -139,29 +115,60 @@ async function showBotNotifSettings(
     reply_markup: notificationSettingsKeyboard(
       {
         scheduleChanges: ns?.notifyScheduleChanges ?? true,
-        remindOff: ns?.notifyRemindOff ?? true,
-        remindOn: ns?.notifyRemindOn ?? true,
-        factOff: ns?.notifyFactOff ?? true,
-        factOn: ns?.notifyFactOn ?? true,
         remind15m: ns?.remind15m ?? true,
         remind30m: ns?.remind30m ?? false,
         remind1h: ns?.remind1h ?? false,
+        fact,
       },
       "notif_bot",
+      hasIp,
+    ),
+  });
+}
+
+async function showChannelNotifSettings(
+  ctx: BotContext,
+  data: UserWithRelations,
+): Promise<void> {
+  const cc = data.channelConfig;
+  const hasIp = data.user.routerIp != null && data.user.routerIp.length > 0;
+  const fact = (cc?.chNotifyFactOff ?? false) || (cc?.chNotifyFactOn ?? false);
+
+  const text = buildNotificationSettingsMessage({
+    scheduleChanges: cc?.chNotifySchedule ?? true,
+    remind1h: cc?.chRemind1h ?? false,
+    remind30m: cc?.chRemind30m ?? false,
+    remind15m: cc?.chRemind15m ?? true,
+    fact,
+    hasIp,
+  });
+
+  await ctx.editMessageText(text, {
+    parse_mode: "HTML",
+    reply_markup: notificationSettingsKeyboard(
+      {
+        scheduleChanges: cc?.chNotifySchedule ?? true,
+        remind15m: cc?.chRemind15m ?? true,
+        remind30m: cc?.chRemind30m ?? false,
+        remind1h: cc?.chRemind1h ?? false,
+        fact,
+      },
+      "notif_ch",
+      hasIp,
     ),
   });
 }
 
 function registerNotifToggles(bot: Bot<BotContext>, prefix: string, target: "bot" | "channel"): void {
-  const toggles: Record<string, string> = {
+  const toggles: Record<string, string | string[]> = {
     [`${prefix}_toggle_schedule`]: target === "bot" ? "notifyScheduleChanges" : "chNotifySchedule",
-    [`${prefix}_toggle_remind_off`]: target === "bot" ? "notifyRemindOff" : "chNotifyRemindOff",
-    [`${prefix}_toggle_remind_on`]: target === "bot" ? "notifyRemindOn" : "chNotifyRemindOn",
-    [`${prefix}_toggle_fact_off`]: target === "bot" ? "notifyFactOff" : "chNotifyFactOff",
-    [`${prefix}_toggle_fact_on`]: target === "bot" ? "notifyFactOn" : "chNotifyFactOn",
     [`${prefix}_time_15`]: target === "bot" ? "remind15m" : "chRemind15m",
     [`${prefix}_time_30`]: target === "bot" ? "remind30m" : "chRemind30m",
     [`${prefix}_time_60`]: target === "bot" ? "remind1h" : "chRemind1h",
+    // Single "fact" toggle updates both factOff and factOn together
+    [`${prefix}_toggle_fact`]: target === "bot"
+      ? ["notifyFactOff", "notifyFactOn"]
+      : ["chNotifyFactOff", "chNotifyFactOn"],
   };
 
   for (const [callbackData, field] of Object.entries(toggles)) {
@@ -175,13 +182,32 @@ function registerNotifToggles(bot: Bot<BotContext>, prefix: string, target: "bot
 
       if (target === "bot") {
         const ns = data.notificationSettings;
-        const currentValue = (ns as Record<string, unknown>)?.[field] as boolean | undefined ?? false;
-        await updateNotificationSettings(ctx.db, data.user.id, { [field]: !currentValue });
+        if (Array.isArray(field)) {
+          // Toggle both factOff and factOn together
+          const currentValue = (ns as Record<string, unknown>)?.[field[0] ?? ""] as boolean | undefined ?? false;
+          const update: Record<string, boolean> = {};
+          for (const f of field) {
+            update[f] = !currentValue;
+          }
+          await updateNotificationSettings(ctx.db, data.user.id, update);
+        } else {
+          const currentValue = (ns as Record<string, unknown>)?.[field] as boolean | undefined ?? false;
+          await updateNotificationSettings(ctx.db, data.user.id, { [field]: !currentValue });
+        }
       } else {
         const { updateChannelConfig } = await import("../../db/queries/users.js");
         const cc = data.channelConfig;
-        const currentValue = (cc as Record<string, unknown>)?.[field] as boolean | undefined ?? false;
-        await updateChannelConfig(ctx.db, data.user.id, { [field]: !currentValue });
+        if (Array.isArray(field)) {
+          const currentValue = (cc as Record<string, unknown>)?.[field[0] ?? ""] as boolean | undefined ?? false;
+          const update: Record<string, boolean> = {};
+          for (const f of field) {
+            update[f] = !currentValue;
+          }
+          await updateChannelConfig(ctx.db, data.user.id, update);
+        } else {
+          const currentValue = (cc as Record<string, unknown>)?.[field] as boolean | undefined ?? false;
+          await updateChannelConfig(ctx.db, data.user.id, { [field]: !currentValue });
+        }
       }
 
       // Refresh the view
@@ -191,35 +217,7 @@ function registerNotifToggles(bot: Bot<BotContext>, prefix: string, target: "bot
       if (target === "bot") {
         await showBotNotifSettings(ctx, refreshed);
       } else {
-        // Trigger notif_select_channel logic
-        const cc = refreshed.channelConfig;
-        const text = buildNotificationSettingsMessage({
-          scheduleChanges: cc?.chNotifySchedule ?? true,
-          remind1h: cc?.chRemind1h ?? false,
-          remind30m: cc?.chRemind30m ?? false,
-          remind15m: cc?.chRemind15m ?? true,
-          factOff: cc?.chNotifyFactOff ?? true,
-          factOn: cc?.chNotifyFactOn ?? true,
-          remindOff: cc?.chNotifyRemindOff ?? true,
-          remindOn: cc?.chNotifyRemindOn ?? true,
-        });
-
-        await ctx.editMessageText(text, {
-          parse_mode: "HTML",
-          reply_markup: notificationSettingsKeyboard(
-            {
-              scheduleChanges: cc?.chNotifySchedule ?? true,
-              remindOff: cc?.chNotifyRemindOff ?? true,
-              remindOn: cc?.chNotifyRemindOn ?? true,
-              factOff: cc?.chNotifyFactOff ?? true,
-              factOn: cc?.chNotifyFactOn ?? true,
-              remind15m: cc?.chRemind15m ?? true,
-              remind30m: cc?.chRemind30m ?? false,
-              remind1h: cc?.chRemind1h ?? false,
-            },
-            "notif_ch",
-          ),
-        });
+        await showChannelNotifSettings(ctx, refreshed);
       }
     });
   }

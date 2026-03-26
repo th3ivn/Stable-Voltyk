@@ -86,6 +86,26 @@ export function formatTimeKyiv(date: Date): string {
   });
 }
 
+export function formatTimeAgo(isoDate: string): string {
+  const then = new Date(isoDate).getTime();
+  const now = Date.now();
+  const diffMs = now - then;
+  if (diffMs < 0) return "щойно";
+
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "щойно";
+  if (diffMin < 60) return `${diffMin} хв тому`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  const remainMin = diffMin % 60;
+  if (diffHours < 24) {
+    return remainMin > 0 ? `${diffHours} год ${remainMin} хв тому` : `${diffHours} год тому`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} дн тому`;
+}
+
 const DAY_NAMES_UK = [
   "неділя",
   "понеділок",

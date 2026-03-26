@@ -286,18 +286,17 @@ export function alertsTargetKeyboard(): InlineKeyboard {
 export function notificationSettingsKeyboard(
   settings: {
     scheduleChanges: boolean;
-    remindOff: boolean;
-    remindOn: boolean;
-    factOff: boolean;
-    factOn: boolean;
     remind15m: boolean;
     remind30m: boolean;
     remind1h: boolean;
+    fact: boolean;
   },
   prefix: string, // "notif_bot" or "notif_ch"
+  hasIp: boolean,
 ): InlineKeyboard {
   const on = "✅";
   const off = "❌";
+  const factLabel = hasIp ? "Фактично за IP-адресою" : "Фактично за графіком";
   return new InlineKeyboard()
     .text(
       `${settings.scheduleChanges ? on : off} Оновлення графіків`,
@@ -309,21 +308,8 @@ export function notificationSettingsKeyboard(
     .text(`${settings.remind15m ? on : off} 15 хв`, `${prefix}_time_15`)
     .row()
     .text(
-      `${settings.remindOff ? on : off} Нагад. перед вимкн.`,
-      `${prefix}_toggle_remind_off`,
-    )
-    .text(
-      `${settings.remindOn ? on : off} Нагад. перед вкл.`,
-      `${prefix}_toggle_remind_on`,
-    )
-    .row()
-    .text(
-      `${settings.factOff ? on : off} Факт. вимкнення`,
-      `${prefix}_toggle_fact_off`,
-    )
-    .text(
-      `${settings.factOn ? on : off} Факт. увімкнення`,
-      `${prefix}_toggle_fact_on`,
+      `${settings.fact ? on : off} ${factLabel}`,
+      `${prefix}_toggle_fact`,
     )
     .row()
     .text("← Назад", `${prefix}_back`)
@@ -603,7 +589,54 @@ export function regionChangeKeyboard(): InlineKeyboard {
 }
 
 export function queueChangeKeyboard(regionCode: string, page = 1): InlineKeyboard {
-  const kb = wizardQueueKeyboard(regionCode, page);
+  const kb = new InlineKeyboard();
+
+  if (regionCode === "kyiv" && page === 1) {
+    for (let i = 0; i < STANDARD_QUEUES.length; i += 3) {
+      const row = STANDARD_QUEUES.slice(i, i + 3);
+      for (const q of row) {
+        kb.text(q, `change_queue_${q}`);
+      }
+      kb.row();
+    }
+    kb.text("Інші черги →", "change_queue_page_2");
+    kb.row();
+    kb.text("← Назад", "settings_region").text("⤴ Меню", "back_to_main").row();
+    return kb;
+  }
+
+  if (regionCode === "kyiv" && page >= 2) {
+    const perPage = 16;
+    const startIdx = (page - 2) * perPage;
+    const pageQueues = KYIV_EXTRA_QUEUES.slice(startIdx, startIdx + perPage);
+
+    for (let i = 0; i < pageQueues.length; i += 4) {
+      const row = pageQueues.slice(i, i + 4);
+      for (const q of row) {
+        kb.text(q, `change_queue_${q}`);
+      }
+      kb.row();
+    }
+
+    const hasNext = startIdx + perPage < KYIV_EXTRA_QUEUES.length;
+    const hasPrev = page > 2;
+
+    if (hasPrev) kb.text("← Назад", `change_queue_page_${page - 1}`);
+    if (page === 2) kb.text("← Назад", "change_queue_page_1");
+    if (hasNext) kb.text("Далі →", `change_queue_page_${page + 1}`);
+    kb.row();
+    kb.text("← Назад", "settings_region").text("⤴ Меню", "back_to_main").row();
+    return kb;
+  }
+
+  // Non-Kyiv: standard queues, 3 per row
+  for (let i = 0; i < STANDARD_QUEUES.length; i += 3) {
+    const row = STANDARD_QUEUES.slice(i, i + 3);
+    for (const q of row) {
+      kb.text(q, `change_queue_${q}`);
+    }
+    kb.row();
+  }
   kb.text("← Назад", "settings_region").text("⤴ Меню", "back_to_main").row();
   return kb;
 }

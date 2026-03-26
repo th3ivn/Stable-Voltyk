@@ -131,21 +131,32 @@ describe("statsWeekMessage", () => {
 });
 
 describe("buildNotificationSettingsMessage", () => {
-  it("shows all settings", () => {
+  it("shows all settings with IP", () => {
     const result = buildNotificationSettingsMessage({
       scheduleChanges: true,
       remind1h: false,
       remind30m: false,
       remind15m: true,
-      factOff: true,
-      factOn: false,
-      remindOff: true,
-      remindOn: true,
+      fact: true,
+      hasIp: true,
     });
     expect(result).toContain("Керування сповіщеннями");
     expect(result).toContain("Оновлення графіків — ✅");
     expect(result).toContain("За 1 год — ❌");
     expect(result).toContain("За 15 хв — ✅");
+    expect(result).toContain("Фактично за IP-адресою — ✅");
+  });
+
+  it("shows fact by schedule when no IP", () => {
+    const result = buildNotificationSettingsMessage({
+      scheduleChanges: true,
+      remind1h: false,
+      remind30m: false,
+      remind15m: true,
+      fact: false,
+      hasIp: false,
+    });
+    expect(result).toContain("Фактично за графіком — ❌");
   });
 });
 
