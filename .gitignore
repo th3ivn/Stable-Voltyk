@@ -6,3 +6,9 @@ dist/
 coverage/
 *.tsbuildinfo
 .DS_Store
+
+# Obsidian vault cache
+vault/.obsidian/workspace.json
+vault/.obsidian/cache
+vault/.obsidian/plugins
+vault/.trash/

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "obsidian-voltyk": {
+      "command": "mcp-server-filesystem",
+      "args": ["/home/user/Stable-Voltyk/vault"],
+      "env": {}
+    }
+  }
+}
