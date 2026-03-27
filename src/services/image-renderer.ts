@@ -2,7 +2,6 @@ import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { logger } from "../utils/logger.js";
 import type { RegionData } from "./api.js";
 
@@ -128,9 +127,9 @@ export function formatUpdateDate(isoString: string): string {
   const d = date.toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" });
   const parts = d.split(".");
   if (parts.length === 3) {
-    const dd = pad(Number(parts[0]));
-    const mm = pad(Number(parts[1]));
-    const yyyy = parts[2];
+    const dd = pad(Number(parts[0] ?? "0"));
+    const mm = pad(Number(parts[1] ?? "0"));
+    const yyyy = parts[2] ?? "";
     const h = date.toLocaleTimeString("uk-UA", {
       timeZone: "Europe/Kyiv",
       hour: "2-digit",
@@ -503,7 +502,7 @@ export async function renderScheduleImage(
   regionData: RegionData,
   queue: string,
 ): Promise<Buffer> {
-  const regionName = regionData.regionAffiliation ?? regionData.regionId;
+  const regionName = regionData.regionAffiliation;
   const updateDate = formatUpdateDate(regionData.lastUpdated);
   const grid = extractQueueGrid(regionData, queue);
 
