@@ -216,7 +216,7 @@ async function notifyScheduleChange(
   const dayName = getDayNameKyiv(now);
 
   const totalMinutes = events.reduce((sum, e) => sum + e.durationMinutes, 0);
-  const text = formatScheduleMessage({
+  const { text, entities } = formatScheduleMessage({
     queue,
     date: dateStr,
     dayName,
@@ -232,7 +232,7 @@ async function notifyScheduleChange(
   let sent = 0;
   for (const user of targetUsers) {
     try {
-      await bot.api.sendMessage(user.telegramId, text, { parse_mode: "HTML" });
+      await bot.api.sendMessage(user.telegramId, text, { entities });
       sent++;
       // Rate limit: ~25 msg/sec
       if (sent % 25 === 0) {
@@ -393,7 +393,7 @@ async function runMorningNotification(): Promise<void> {
     const dayName = getDayNameKyiv(now);
     const totalMinutes = parsed.today.reduce((sum, e) => sum + e.durationMinutes, 0);
 
-    const text = formatScheduleMessage({
+    const { text, entities } = formatScheduleMessage({
       queue,
       date: dateStr,
       dayName,
@@ -403,7 +403,7 @@ async function runMorningNotification(): Promise<void> {
 
     for (const user of users) {
       try {
-        await bot.api.sendMessage(user.telegramId, text, { parse_mode: "HTML" });
+        await bot.api.sendMessage(user.telegramId, text, { entities });
         totalSent++;
         if (totalSent % 25 === 0) {
           await new Promise((resolve) => setTimeout(resolve, 1000));

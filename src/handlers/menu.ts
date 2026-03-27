@@ -1,4 +1,4 @@
-import { InputFile } from "grammy";
+import { InputFile, InputMediaBuilder } from "grammy";
 import type { Bot } from "grammy";
 import type { BotContext } from "../bot.js";
 import { showMainMenu } from "./start.js";
@@ -28,7 +28,7 @@ import { formatScheduleMessage } from "../formatters/schedule.js";
 import { formatTimerPopup } from "../formatters/timer.js";
 import { EMOJI } from "../constants/emoji.js";
 import { getRegionName } from "../constants/regions.js";
-import { tgEmoji, nowKyiv, formatDateKyiv, getDayNameKyiv, formatDuration, formatTimeAgo } from "../utils/helpers.js";
+import { tgEmoji, nowKyiv, formatDateKyiv, getDayNameKyiv, formatDuration } from "../utils/helpers.js";
 import { config } from "../config.js";
 import {
   getScheduleData,
@@ -118,8 +118,8 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
       show_alert: false,
     });
 
-    // Re-render the schedule view
-    await sendScheduleView(ctx, user.region, user.queue);
+    // Re-render the schedule view in-place (edit existing photo)
+    await sendScheduleView(ctx, user.region, user.queue, true);
   });
 
   // Queue change from schedule view → show region selection
@@ -355,10 +355,17 @@ export function registerMenuHandlers(bot: Bot<BotContext>): void {
 // Schedule view helper
 // ============================================================
 
+/**
+ * Send or edit the schedule view (photo + caption with entities).
+ *
+ * @param editExisting - true: edit current photo message in-place (editMessageMedia).
+ *                       false: delete current message and send a new photo.
+ */
 async function sendScheduleView(
   ctx: BotContext,
   region: string,
   queue: string,
+  editExisting = false,
 ): Promise<void> {
   const now = nowKyiv();
   const dateStr = formatDateKyiv(now);
@@ -368,16 +375,14 @@ async function sendScheduleView(
   const data = await getScheduleData(region);
   if (data === null) {
     const fallbackText =
-      `<i>💡 Графік відключень для черги ${queue}:</i>\n\n` +
+      `💡 Графік відключень для черги ${queue}:\n\n` +
       `❌ Не вдалося завантажити дані графіку.\nСпробуйте пізніше.`;
     try {
       await ctx.editMessageText(fallbackText, {
-        parse_mode: "HTML",
         reply_markup: scheduleKeyboard(),
       });
     } catch {
       await ctx.reply(fallbackText, {
-        parse_mode: "HTML",
         reply_markup: scheduleKeyboard(),
       });
     }
@@ -386,37 +391,63 @@ async function sendScheduleView(
 
   const parsed = parseScheduleForQueue(data, queue);
   const totalMinutes = parsed.today.reduce((sum, e) => sum + e.durationMinutes, 0);
-  const updatedAgo = data.lastUpdated.length > 0 ? formatTimeAgo(data.lastUpdated) : null;
-  const caption = formatScheduleMessage({
+
+  // Parse lastUpdated to Unix timestamp
+  let lastUpdatedUnix: number | null = null;
+  if (data.lastUpdated.length > 0) {
+    const ts = new Date(data.lastUpdated).getTime();
+    if (!Number.isNaN(ts)) {
+      lastUpdatedUnix = Math.floor(ts / 1000);
+    }
+  }
+
+  const { text: caption, entities: captionEntities } = formatScheduleMessage({
     queue,
     date: dateStr,
     dayName,
     events: parsed.today,
     totalMinutesOff: totalMinutes,
-    updatedAgo,
+    lastUpdatedUnix,
   });
 
-  // Try to fetch and send schedule image
+  // Try to fetch schedule image
   const image = await getScheduleImage(region, queue);
 
   if (image !== null) {
-    // Send as photo with caption
-    try {
-      // Delete the previous message (text), then send photo
+    const file = new InputFile(image, `schedule-${queue}.png`);
+
+    if (editExisting) {
+      // Edit existing photo message in-place
       try {
-        await ctx.deleteMessage();
+        const media = InputMediaBuilder.photo(file, {
+          caption,
+          caption_entities: captionEntities,
+        });
+        await ctx.editMessageMedia(media, {
+          reply_markup: scheduleKeyboard(),
+        });
+        return;
       } catch {
-        // ignore
+        // Fallback to delete + send if edit fails
       }
-      await ctx.replyWithPhoto(new InputFile(image, `schedule-${queue}.png`), {
+    }
+
+    // Delete current message (text or failed edit), send new photo
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
+    try {
+      await ctx.replyWithPhoto(file, {
         caption,
-        parse_mode: "HTML",
+        caption_entities: captionEntities,
         reply_markup: scheduleKeyboard(),
       });
     } catch {
       // Fallback to text if photo fails
       await ctx.reply(caption, {
-        parse_mode: "HTML",
+        entities: captionEntities,
         reply_markup: scheduleKeyboard(),
       });
     }
@@ -424,12 +455,12 @@ async function sendScheduleView(
     // No image available — send text only
     try {
       await ctx.editMessageText(caption, {
-        parse_mode: "HTML",
+        entities: captionEntities,
         reply_markup: scheduleKeyboard(),
       });
     } catch {
       await ctx.reply(caption, {
-        parse_mode: "HTML",
+        entities: captionEntities,
         reply_markup: scheduleKeyboard(),
       });
     }

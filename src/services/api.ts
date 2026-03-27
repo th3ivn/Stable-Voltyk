@@ -172,6 +172,7 @@ const githubBreaker = new CircuitBreaker("github", 5, 60_000, () => {
 const jsonCache = new TtlCache<RegionData>(120_000, 20);
 const imageCache = new TtlCache<Buffer>(120_000, 50);
 let lastETag: string | null = null;
+let lastCommitSha: string | null = null;
 
 // ============================================================
 // Public API
@@ -328,6 +329,14 @@ export function clearCaches(): void {
   jsonCache.clear();
   imageCache.clear();
   lastETag = null;
+  lastCommitSha = null;
+}
+
+/**
+ * Get last known commit SHA (for diagnostics / health check).
+ */
+export function getLastCommitSha(): string | null {
+  return lastCommitSha;
 }
 
 /**
@@ -341,8 +350,23 @@ export function getCircuitBreakerState(): string {
 // Private helpers
 // ============================================================
 
+/**
+ * Replace `/main/` in raw.githubusercontent.com URLs with `/{sha}/`
+ * so CDN serves the exact version we detected.
+ */
+function buildVersionedUrl(template: string, replacements: Record<string, string>): string {
+  let url = template;
+  for (const [key, value] of Object.entries(replacements)) {
+    url = url.replace(`{${key}}`, value);
+  }
+  if (lastCommitSha !== null) {
+    url = url.replace("/main/", `/${lastCommitSha}/`);
+  }
+  return url;
+}
+
 async function fetchJson(region: string): Promise<RegionData> {
-  const url = config.DATA_URL_TEMPLATE.replace("{region}", region);
+  const url = buildVersionedUrl(config.DATA_URL_TEMPLATE, { region });
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
@@ -402,9 +426,7 @@ async function fetchJson(region: string): Promise<RegionData> {
 async function fetchImage(region: string, queue: string): Promise<Buffer> {
   // Queue format: "1.2" → "1-2" for URL
   const queueForUrl = queue.replace(".", "-");
-  const url = config.IMAGE_URL_TEMPLATE
-    .replace("{region}", region)
-    .replace("{queue}", queueForUrl);
+  const url = buildVersionedUrl(config.IMAGE_URL_TEMPLATE, { region, queue: queueForUrl });
 
   const headers: Record<string, string> = {};
   if (config.GITHUB_TOKEN.length > 0) {
@@ -484,6 +506,19 @@ async function checkGitHubCommits(): Promise<{
     const newETag = response.headers.get("etag");
     if (newETag !== null) {
       lastETag = newETag;
+    }
+
+    // Extract commit SHA from response
+    try {
+      const commits = (await response.json()) as Array<{ sha?: string }>;
+      const sha = commits[0]?.sha;
+      if (sha !== undefined && sha.length > 0) {
+        lastCommitSha = sha;
+        logger.info({ sha: sha.slice(0, 8) }, "Updated commit SHA");
+      }
+    } catch {
+      // If JSON parsing fails, we still have updates — just no SHA
+      logger.warn("Failed to parse commit SHA from GitHub response");
     }
 
     return { hasUpdates: true, newETag };

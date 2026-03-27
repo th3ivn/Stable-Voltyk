@@ -39,7 +39,7 @@ describe("formatMainMenuMessage", () => {
 
 describe("formatScheduleMessage", () => {
   it("formats events list", () => {
-    const result = formatScheduleMessage({
+    const { text, entities } = formatScheduleMessage({
       queue: "1.1",
       date: "25.03.2026",
       dayName: "середа",
@@ -49,23 +49,43 @@ describe("formatScheduleMessage", () => {
       ],
       totalMinutesOff: 480,
     });
-    expect(result).toContain("для черги 1.1");
-    expect(result).toContain("08:00 - 12:00 (~4г)");
-    expect(result).toContain("16:00 - 20:00 (~4г)");
-    expect(result).toContain("⚠️");
-    expect(result).toContain("🆕");
-    expect(result).toContain("~8г");
+    expect(text).toContain("для черги 1.1");
+    expect(text).toContain("08:00 - 12:00 (~4г)");
+    expect(text).toContain("16:00 - 20:00 (~4г)");
+    expect(text).toContain("⚠️");
+    expect(text).toContain("🆕");
+    expect(text).toContain("~8г");
+    expect(entities.length).toBeGreaterThan(0);
+    expect(entities.some((e) => e.type === "bold")).toBe(true);
   });
 
   it("formats no events", () => {
-    const result = formatScheduleMessage({
+    const { text } = formatScheduleMessage({
       queue: "2.2",
       date: "25.03.2026",
       dayName: "середа",
       events: [],
       totalMinutesOff: 0,
     });
-    expect(result).toContain("Відключень не заплановано");
+    expect(text).toContain("Відключень не заплановано");
+  });
+
+  it("includes date_time entity when lastUpdatedUnix provided", () => {
+    const { text, entities } = formatScheduleMessage({
+      queue: "1.1",
+      date: "25.03.2026",
+      dayName: "середа",
+      events: [],
+      totalMinutesOff: 0,
+      lastUpdatedUnix: 1711360000,
+    });
+    expect(text).toContain("Оновлено:");
+    const dtEntity = entities.find((e) => e.type === "date_time");
+    expect(dtEntity).toBeDefined();
+    if (dtEntity?.type === "date_time") {
+      expect(dtEntity.unix_time).toBe(1711360000);
+      expect(dtEntity.date_time_format).toBe("r");
+    }
   });
 });
 
