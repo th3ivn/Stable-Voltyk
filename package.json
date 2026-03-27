@@ -27,6 +27,7 @@
   "dependencies": {
     "@grammyjs/conversations": "^2.1.1",
     "@neondatabase/serverless": "^1.0.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@sentry/node": "^10.45.0",
     "croner": "^10.0.1",
     "dotenv": "^17.3.1",
@@ -35,12 +36,15 @@
     "grammy": "^1.41.1",
     "p-limit": "^7.3.0",
     "pino": "^10.3.1",
+    "satori": "^0.26.0",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
+    "@types/sharp": "^0.31.1",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "@vitest/coverage-v8": "^4.1.1",

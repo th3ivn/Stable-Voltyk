@@ -200,7 +200,8 @@ export async function getScheduleData(region: string): Promise<RegionData | null
 }
 
 /**
- * Fetch schedule image (PNG) for a region + queue.
+ * Get schedule image (PNG) for a region + queue.
+ * Renders locally from JSON data using satori (no external image fetch).
  */
 export async function getScheduleImage(
   region: string,
@@ -211,15 +212,20 @@ export async function getScheduleImage(
   if (cached !== null) return cached;
 
   try {
-    const buffer = await githubBreaker.execute(() => fetchImage(region, queue));
+    // Get JSON data first (from cache or fetch)
+    const data = await getScheduleData(region);
+    if (data === null) {
+      logger.warn({ region, queue }, "No schedule data available for image rendering");
+      return null;
+    }
+
+    // Render image locally from JSON data
+    const { renderScheduleImage } = await import("./image-renderer.js");
+    const buffer = await renderScheduleImage(data, queue);
     imageCache.set(cacheKey, buffer);
     return buffer;
   } catch (error) {
-    if (error instanceof CircuitBreakerOpenError) {
-      logger.warn({ region, queue }, "GitHub circuit breaker open, skipping image fetch");
-      return null;
-    }
-    logger.error({ error, region, queue }, "Failed to fetch schedule image");
+    logger.error({ error, region, queue }, "Failed to render schedule image");
     return null;
   }
 }
@@ -423,44 +429,7 @@ async function fetchJson(region: string): Promise<RegionData> {
   }
 }
 
-async function fetchImage(region: string, queue: string): Promise<Buffer> {
-  // Queue format: "1.2" → "1-2" for URL
-  const queueForUrl = queue.replace(".", "-");
-  const url = buildVersionedUrl(config.IMAGE_URL_TEMPLATE, { region, queue: queueForUrl });
-
-  const headers: Record<string, string> = {};
-  if (config.GITHUB_TOKEN.length > 0) {
-    headers["Authorization"] = `token ${config.GITHUB_TOKEN}`;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => { controller.abort(); }, 15_000);
-
-  try {
-    const response = await fetch(url, { headers, signal: controller.signal });
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      throw new AppError(ErrorCode.GITHUB_API_ERROR, `Image fetch failed: ${response.status}`, {
-        region,
-        queue,
-        status: response.status,
-      });
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch (error) {
-    clearTimeout(timeout);
-    if (error instanceof AppError) throw error;
-
-    const message = error instanceof Error ? error.message : "Unknown error";
-    throw new AppError(ErrorCode.GITHUB_API_ERROR, `Image fetch failed: ${message}`, {
-      region,
-      queue,
-    });
-  }
-}
+// fetchImage removed — images are now rendered locally via image-renderer.ts
 
 async function checkGitHubCommits(): Promise<{
   hasUpdates: boolean;
