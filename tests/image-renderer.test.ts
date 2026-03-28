@@ -60,24 +60,35 @@ function makeRegionData(overrides?: {
 // ============================================================
 
 describe("getCellStyle", () => {
-  it("returns white for 'yes'", () => {
-    expect(getCellStyle("yes").bg).toBe("#ffffff");
+  it("returns white bg and no icon for 'yes'", () => {
+    const style = getCellStyle("yes");
+    expect(style.bg).toBe("#ffffff");
+    expect(style.iconSrc).toBeNull();
   });
 
-  it("returns gray for 'no'", () => {
-    expect(getCellStyle("no").bg).toBe("#d1d5db");
+  it("returns white bg and icon for 'no'", () => {
+    const style = getCellStyle("no");
+    expect(style.bg).toBe("#ffffff");
+    expect(style.iconSrc).not.toBeNull();
+    expect(style.iconSrc).toContain("data:image/svg+xml;base64,");
   });
 
-  it("returns light yellow for 'maybe'", () => {
-    expect(getCellStyle("maybe").bg).toBe("#fef9c3");
+  it("returns white bg and icon for 'maybe'", () => {
+    const style = getCellStyle("maybe");
+    expect(style.bg).toBe("#ffffff");
+    expect(style.iconSrc).not.toBeNull();
   });
 
-  it("returns light blue for 'mfirst'", () => {
-    expect(getCellStyle("mfirst").bg).toBe("#bfdbfe");
+  it("returns white bg and icon for 'mfirst'", () => {
+    const style = getCellStyle("mfirst");
+    expect(style.bg).toBe("#ffffff");
+    expect(style.iconSrc).not.toBeNull();
   });
 
-  it("returns medium blue for 'msecond'", () => {
-    expect(getCellStyle("msecond").bg).toBe("#93c5fd");
+  it("returns white bg and icon for 'msecond'", () => {
+    const style = getCellStyle("msecond");
+    expect(style.bg).toBe("#ffffff");
+    expect(style.iconSrc).not.toBeNull();
   });
 });
 
@@ -138,13 +149,28 @@ describe("extractQueueGrid", () => {
     expect(grid.todayMissing).toBe(true);
   });
 
-  it("generates date labels from timestamps", () => {
+  it("generates date labels with full month name", () => {
     const data = makeRegionData();
     const grid = extractQueueGrid(data, "1.2");
 
-    // Labels should be in DD.MM format
-    expect(grid.todayLabel).toMatch(/^\d{2}\.\d{2}$/);
-    expect(grid.tomorrowLabel).toMatch(/^\d{2}\.\d{2}$/);
+    // Labels should contain Ukrainian month name (e.g., "24 березня")
+    expect(grid.todayLabel).toMatch(/\d+\s+\S+/);
+    expect(grid.tomorrowLabel).toMatch(/\d+\s+\S+/);
+  });
+
+  it("shows missing when fact data absent even without preset fallback", () => {
+    const data = makeRegionData({ factData: {} });
+    // Add preset data - should NOT override missing flag
+    (data.preset as Record<string, unknown>).data = {
+      "GPV1.2": {
+        "1": { "1": "no", "2": "no", "3": "yes" },
+      },
+    };
+    const grid = extractQueueGrid(data, "1.2");
+
+    // Should still be missing since fact data is absent
+    expect(grid.todayMissing).toBe(true);
+    expect(grid.tomorrowMissing).toBe(true);
   });
 });
 
