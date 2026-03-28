@@ -62,32 +62,30 @@ function makeRegionData(overrides?: {
 describe("getCellStyle", () => {
   it("returns white for 'yes'", () => {
     expect(getCellStyle("yes").bg).toBe("#ffffff");
-    expect(getCellStyle("yes").icon).toBeNull();
   });
 
-  it("returns dark for 'no' with icon", () => {
-    expect(getCellStyle("no").bg).toBe("#2d3748");
-    expect(getCellStyle("no").icon).toBe("⚡");
+  it("returns gray for 'no'", () => {
+    expect(getCellStyle("no").bg).toBe("#d1d5db");
   });
 
   it("returns light yellow for 'maybe'", () => {
-    expect(getCellStyle("maybe").bg).toBe("#fefce8");
+    expect(getCellStyle("maybe").bg).toBe("#fef9c3");
   });
 
-  it("returns amber for 'mfirst'", () => {
-    expect(getCellStyle("mfirst").bg).toBe("#fef3c7");
+  it("returns light blue for 'mfirst'", () => {
+    expect(getCellStyle("mfirst").bg).toBe("#bfdbfe");
   });
 
-  it("returns gold for 'msecond'", () => {
-    expect(getCellStyle("msecond").bg).toBe("#fde68a");
+  it("returns medium blue for 'msecond'", () => {
+    expect(getCellStyle("msecond").bg).toBe("#93c5fd");
   });
 });
 
 describe("formatUpdateDate", () => {
-  it("formats ISO string to DD.MM.YYYY HH:MM", () => {
+  it("formats ISO string to HH:MM DD.MM", () => {
     const result = formatUpdateDate("2026-03-27T19:50:00.000Z");
     // In Europe/Kyiv timezone, 19:50 UTC = 21:50 or 22:50 depending on DST
-    expect(result).toMatch(/^27\.03\.2026 \d{2}:\d{2}$/);
+    expect(result).toMatch(/^\d{2}:\d{2} 27\.03$/);
   });
 });
 
@@ -144,9 +142,9 @@ describe("extractQueueGrid", () => {
     const data = makeRegionData();
     const grid = extractQueueGrid(data, "1.2");
 
-    // Labels should contain month name in Ukrainian
-    expect(grid.todayLabel).toContain("березня");
-    expect(grid.tomorrowLabel).toContain("березня");
+    // Labels should be in DD.MM format
+    expect(grid.todayLabel).toMatch(/^\d{2}\.\d{2}$/);
+    expect(grid.tomorrowLabel).toMatch(/^\d{2}\.\d{2}$/);
   });
 });
 
