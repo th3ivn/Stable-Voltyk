@@ -53,12 +53,9 @@ let fontRegular: Buffer | null = null;
 let fontBold: Buffer | null = null;
 
 const FONT_PATHS = [
-  // Alpine with font-noto
   "/usr/share/fonts/noto/NotoSans-Regular.ttf",
   "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-  // Debian/Ubuntu
   "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-  // Fallback
   "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
   "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
 ];
@@ -104,23 +101,22 @@ function getFonts(): Array<{
 // Data extraction
 // ============================================================
 
-/** Map GPV key from queue: "1.2" -> "GPV1.2" */
 function queueToGpvKey(queue: string): string {
   return `GPV${queue}`;
 }
 
-/** Format unix timestamp to "DD місяця" in Ukrainian */
-function formatDayLabel(unixTs: number): string {
+/** Format unix timestamp to "DD.MM" short date */
+function formatDayLabelShort(unixTs: number): string {
   const date = new Date(unixTs * 1000);
   const day = date.toLocaleDateString("uk-UA", {
     timeZone: "Europe/Kyiv",
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
   });
   return day;
 }
 
-/** Format lastUpdated ISO string to "DD.MM.YYYY HH:MM" */
+/** Format lastUpdated ISO string to "HH:MM DD.MM" for compact badge */
 export function formatUpdateDate(isoString: string): string {
   const date = new Date(isoString);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -129,20 +125,17 @@ export function formatUpdateDate(isoString: string): string {
   if (parts.length === 3) {
     const dd = pad(Number(parts[0] ?? "0"));
     const mm = pad(Number(parts[1] ?? "0"));
-    const yyyy = parts[2] ?? "";
     const h = date.toLocaleTimeString("uk-UA", {
       timeZone: "Europe/Kyiv",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
-    return `${dd}.${mm}.${yyyy} ${h}`;
+    return `${h} ${dd}.${mm}`;
   }
-  // Fallback
   return date.toLocaleString("uk-UA", { timeZone: "Europe/Kyiv" });
 }
 
-/** Extract 24 cell states for a queue from a day's data */
 function extractDayCells(
   dayData: Record<string, unknown> | undefined,
   gpvKey: string,
@@ -167,7 +160,6 @@ function extractDayCells(
   return { cells, missing: false };
 }
 
-/** Extract the full schedule grid for a queue from region data */
 export function extractQueueGrid(regionData: RegionData, queue: string): ScheduleGrid {
   const gpvKey = queueToGpvKey(queue);
   const factData = regionData.fact as Record<string, unknown> | undefined;
@@ -175,7 +167,6 @@ export function extractQueueGrid(regionData: RegionData, queue: string): Schedul
   const presetData = regionData.preset as Record<string, unknown> | undefined;
   const presetDataMap = (presetData?.["data"] ?? {}) as Record<string, Record<string, unknown>>;
 
-  // Get timestamps from fact.data (sorted)
   const timestamps = Object.keys(factDataMap)
     .map(Number)
     .filter((n) => !isNaN(n))
@@ -184,14 +175,12 @@ export function extractQueueGrid(regionData: RegionData, queue: string): Schedul
   const todayTs = timestamps[0] ?? 0;
   const tomorrowTs = timestamps[1] ?? 0;
 
-  // Try fact data first, fallback to preset
   let todayResult = extractDayCells(factDataMap[String(todayTs)], gpvKey);
   let tomorrowResult = extractDayCells(factDataMap[String(tomorrowTs)], gpvKey);
 
-  // If fact data is missing, try preset data with day-of-week
   if (todayResult.missing && todayTs > 0) {
-    const dow = new Date(todayTs * 1000).getDay(); // 0=Sun
-    const presetDow = dow === 0 ? 7 : dow; // 1=Mon..7=Sun
+    const dow = new Date(todayTs * 1000).getDay();
+    const presetDow = dow === 0 ? 7 : dow;
     const presetDay = presetDataMap[gpvKey] as Record<string, Record<string, string>> | undefined;
     if (presetDay !== undefined) {
       const daySlots = presetDay[String(presetDow)];
@@ -214,8 +203,8 @@ export function extractQueueGrid(regionData: RegionData, queue: string): Schedul
   }
 
   return {
-    todayLabel: todayTs > 0 ? formatDayLabel(todayTs) : "Сьогодні",
-    tomorrowLabel: tomorrowTs > 0 ? formatDayLabel(tomorrowTs) : "Завтра",
+    todayLabel: todayTs > 0 ? formatDayLabelShort(todayTs) : "Сьогодні",
+    tomorrowLabel: tomorrowTs > 0 ? formatDayLabelShort(tomorrowTs) : "Завтра",
     todayCells: todayResult.cells,
     tomorrowCells: tomorrowResult.cells,
     todayMissing: todayResult.missing,
@@ -224,22 +213,84 @@ export function extractQueueGrid(regionData: RegionData, queue: string): Schedul
 }
 
 // ============================================================
-// Cell colors
+// Cell colors (DTEK style)
 // ============================================================
 
-export function getCellStyle(state: CellState): { bg: string; icon: string | null } {
+export function getCellStyle(state: CellState): { bg: string } {
   switch (state) {
     case "yes":
-      return { bg: "#ffffff", icon: null };
+      return { bg: "#ffffff" };
     case "no":
-      return { bg: "#2d3748", icon: "⚡" };
+      return { bg: "#d1d5db" };
     case "maybe":
-      return { bg: "#fefce8", icon: null };
+      return { bg: "#fef9c3" };
     case "mfirst":
-      return { bg: "#fef3c7", icon: null };
+      return { bg: "#bfdbfe" };
     case "msecond":
-      return { bg: "#fde68a", icon: null };
+      return { bg: "#93c5fd" };
   }
+}
+
+// ============================================================
+// SVG icons (from outage-data-ua, simplified for satori)
+// ============================================================
+
+function legendIcon(type: "yes" | "no" | "mfirst" | "msecond"): SatoriElement {
+  const size = 18;
+
+  if (type === "yes") {
+    // Yellow lightbulb circle
+    return el("div", {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      backgroundColor: "#fbbf24",
+    },
+      el("div", { display: "flex", fontSize: 10, lineHeight: 1 }, "💡"),
+    );
+  }
+
+  if (type === "no") {
+    // Gray box (power off)
+    return el("div", {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: size,
+      height: size,
+      borderRadius: 3,
+      backgroundColor: "#d1d5db",
+    });
+  }
+
+  // mfirst / msecond - split color box
+  const leftColor = type === "msecond" ? "#93c5fd" : "#e5e7eb";
+  const rightColor = type === "mfirst" ? "#bfdbfe" : "#e5e7eb";
+
+  return el("div", {
+    display: "flex",
+    flexDirection: "row",
+    width: size,
+    height: size,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+    el("div", {
+      display: "flex",
+      width: size / 2,
+      height: size,
+      backgroundColor: leftColor,
+    }),
+    el("div", {
+      display: "flex",
+      width: size / 2,
+      height: size,
+      backgroundColor: rightColor,
+    }),
+  );
 }
 
 // ============================================================
@@ -254,7 +305,7 @@ const TIME_HEADERS = [
 ];
 
 // ============================================================
-// Layout builder (satori element tree)
+// Layout builder — compact DTEK-style
 // ============================================================
 
 function buildScheduleLayout(
@@ -263,17 +314,15 @@ function buildScheduleLayout(
   updateDate: string,
   grid: ScheduleGrid,
 ): SatoriElement {
-  const CELL_W = 32;
-  const CELL_H = 36;
-  const HEADER_H = 44;
-  const LABEL_W = 100;
+  const CELL_W = 30;
+  const CELL_H = 32;
+  const HEADER_H = 50;
+  const LABEL_W = 50;
+  const TABLE_W = LABEL_W + CELL_W * 24;
 
-  // --- Header cell: two-line format "00" / "01" ---
+  // --- Header cell: vertical "00-01" ---
   function headerCell(text: string): SatoriElement {
-    // "00-01" → top "00", bottom "01"
-    const parts = text.split("-");
-    const top = parts[0] ?? "";
-    const bottom = parts[1] ?? "";
+    const chars = text.split("");
     return el("div", {
       display: "flex",
       flexDirection: "column",
@@ -281,33 +330,30 @@ function buildScheduleLayout(
       justifyContent: "center",
       width: CELL_W,
       height: HEADER_H,
-      borderRight: "1px solid #e2e8f0",
-      borderBottom: "1px solid #cbd5e1",
-      color: "#374151",
-      fontSize: 10,
-      gap: 1,
-    },
-      el("div", { display: "flex", fontSize: 10, lineHeight: 1 }, top),
-      el("div", { display: "flex", fontSize: 8, lineHeight: 1, color: "#9ca3af" }, "|"),
-      el("div", { display: "flex", fontSize: 10, lineHeight: 1 }, bottom),
-    );
+      borderRight: "1px solid #e5e7eb",
+      borderBottom: "1px solid #d1d5db",
+      fontSize: 8,
+      color: "#6b7280",
+      gap: 0,
+      lineHeight: 1,
+    }, ...chars.map((ch) =>
+      el("div", { display: "flex", fontSize: 8, lineHeight: 1.1 }, ch),
+    ));
   }
 
   // --- Data cell ---
   function dataCell(state: CellState): SatoriElement {
-    const style = getCellStyle(state);
+    const { bg } = getCellStyle(state);
     return el("div", {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       width: CELL_W,
       height: CELL_H,
-      backgroundColor: style.bg,
-      borderRight: "1px solid #e2e8f0",
-      borderBottom: "1px solid #e2e8f0",
-      fontSize: 10,
-      color: "#ffffff",
-    }, style.icon);
+      backgroundColor: bg,
+      borderRight: "1px solid #e5e7eb",
+      borderBottom: "1px solid #e5e7eb",
+    });
   }
 
   // --- Missing data row ---
@@ -316,13 +362,13 @@ function buildScheduleLayout(
       el("div", {
         display: "flex",
         alignItems: "center",
+        justifyContent: "center",
         width: LABEL_W,
-        paddingLeft: 12,
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: 700,
-        color: "#0e1624",
-        borderRight: "1px solid #cbd5e1",
-        borderBottom: "1px solid #e2e8f0",
+        color: "#374151",
+        borderRight: "1px solid #d1d5db",
+        borderBottom: "1px solid #e5e7eb",
       }, label),
       el("div", {
         display: "flex",
@@ -330,9 +376,9 @@ function buildScheduleLayout(
         justifyContent: "center",
         width: CELL_W * 24,
         height: CELL_H,
-        fontSize: 12,
-        color: "#6b7785",
-        borderBottom: "1px solid #e2e8f0",
+        fontSize: 11,
+        color: "#9ca3af",
+        borderBottom: "1px solid #e5e7eb",
       }, "Відсутні на сайті ДТЕК"),
     );
   }
@@ -345,147 +391,121 @@ function buildScheduleLayout(
       el("div", {
         display: "flex",
         alignItems: "center",
+        justifyContent: "center",
         width: LABEL_W,
-        paddingLeft: 12,
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: 700,
-        color: "#0e1624",
-        borderRight: "1px solid #cbd5e1",
-        borderBottom: "1px solid #e2e8f0",
+        color: "#374151",
+        borderRight: "1px solid #d1d5db",
+        borderBottom: "1px solid #e5e7eb",
       }, label),
       ...cells.map((s) => dataCell(s)),
     );
   }
 
   // --- Legend item ---
-  function legendItem(bg: string, text: string, icon?: string): SatoriElement {
+  function legendItemEl(icon: SatoriElement, text: string): SatoriElement {
     return el("div", {
       display: "flex",
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      marginRight: 24,
+      gap: 4,
     },
-      el("div", {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 28,
-        backgroundColor: bg,
-        borderRadius: 4,
-        border: "1px solid #e2e8f0",
-        fontSize: 12,
-        color: bg === "#2d3748" ? "#ffffff" : "#374151",
-      }, icon ?? null),
-      el("div", { display: "flex", fontSize: 12, color: "#374151" }, text),
+      icon,
+      el("div", { display: "flex", fontSize: 10, color: "#6b7280" }, text),
     );
   }
-
-  const TABLE_W = LABEL_W + CELL_W * 24;
 
   // --- Main layout ---
   return el("div", {
     display: "flex",
     flexDirection: "column",
-    backgroundColor: "#f6f8fb",
-    padding: 24,
-    width: TABLE_W + 48 + 48, // table + card padding + outer padding
+    backgroundColor: "#ffffff",
+    padding: 16,
+    paddingBottom: 12,
+    width: TABLE_W + 32,
     fontFamily: "Sans",
   },
-    // Card container
+    // Header row: update badge + region/queue badge
+    el("div", {
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+      // Left badge: "Оновлення від HH:MM DD.MM"
+      el("div", {
+        display: "flex",
+        backgroundColor: "#f3f4f6",
+        borderRadius: 6,
+        paddingLeft: 10,
+        paddingRight: 10,
+        paddingTop: 5,
+        paddingBottom: 5,
+        fontSize: 11,
+        color: "#6b7280",
+        border: "1px solid #e5e7eb",
+      }, `Оновлення від ${updateDate}`),
+      // Right badge: "Регіон, Черга X.X"
+      el("div", {
+        display: "flex",
+        backgroundColor: "#3b82f6",
+        borderRadius: 6,
+        paddingLeft: 12,
+        paddingRight: 12,
+        paddingTop: 5,
+        paddingBottom: 5,
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#ffffff",
+      }, `${regionName}, Черга ${queue}`),
+    ),
+
+    // Table
     el("div", {
       display: "flex",
       flexDirection: "column",
-      backgroundColor: "#ffffff",
-      borderRadius: 12,
-      padding: 24,
-      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      border: "1px solid #d1d5db",
+      borderRadius: 4,
+      overflow: "hidden",
+      marginBottom: 10,
     },
-      // Header row: title + queue badge
-      el("div", {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 8,
-      },
+      // Header row with time slots
+      el("div", { display: "flex", flexDirection: "row" },
         el("div", {
           display: "flex",
-          fontSize: 22,
+          alignItems: "center",
+          justifyContent: "center",
+          width: LABEL_W,
+          height: HEADER_H,
+          fontSize: 10,
           fontWeight: 700,
-          color: "#0e1624",
-        }, `Графік відключень (${regionName}):`),
-        el("div", {
-          display: "flex",
-          backgroundColor: "#ffd666",
-          borderRadius: 8,
-          paddingLeft: 16,
-          paddingRight: 16,
-          paddingTop: 8,
-          paddingBottom: 8,
-          fontSize: 18,
-          fontWeight: 700,
-          color: "#0e1624",
-        }, `Черга ${queue}`),
+          color: "#6b7280",
+          borderRight: "1px solid #d1d5db",
+          borderBottom: "1px solid #d1d5db",
+        }, "Час"),
+        ...TIME_HEADERS.map((h) => headerCell(h)),
       ),
+      // Today
+      dataRow(grid.todayLabel, grid.todayCells, grid.todayMissing),
+      // Tomorrow
+      dataRow(grid.tomorrowLabel, grid.tomorrowCells, grid.tomorrowMissing),
+    ),
 
-      // Update date
-      el("div", {
-        display: "flex",
-        fontSize: 11,
-        color: "#9ca3af",
-        marginBottom: 16,
-      }, `Дата та час останнього оновлення інформації на графіку: ${updateDate}`),
-
-      // Table
-      el("div", {
-        display: "flex",
-        flexDirection: "column",
-        border: "1px solid #cbd5e1",
-        borderRadius: 4,
-        overflow: "hidden",
-        marginBottom: 20,
-      },
-        // Header row
-        el("div", { display: "flex", flexDirection: "row" },
-          el("div", {
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            width: LABEL_W,
-            height: HEADER_H,
-            paddingLeft: 8,
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#374151",
-            borderRight: "1px solid #cbd5e1",
-            borderBottom: "1px solid #cbd5e1",
-          },
-            el("div", { display: "flex" }, "Часові"),
-            el("div", { display: "flex" }, "проміжки"),
-          ),
-          ...TIME_HEADERS.map((h) => headerCell(h)),
-        ),
-        // Today row
-        dataRow(grid.todayLabel, grid.todayCells, grid.todayMissing),
-        // Tomorrow row
-        dataRow(grid.tomorrowLabel, grid.tomorrowCells, grid.tomorrowMissing),
-      ),
-
-      // Legend
-      el("div", {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 8,
-      },
-        legendItem("#ffffff", "Світло є"),
-        legendItem("#2d3748", "Світла нема", "⚡"),
-        legendItem("#fef3c7", "Перші 30 хв."),
-        legendItem("#fde68a", "Другі 30 хв."),
-      ),
+    // Legend
+    el("div", {
+      display: "flex",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 16,
+      flexWrap: "wrap",
+    },
+      legendItemEl(legendIcon("yes"), "Світло є"),
+      legendItemEl(legendIcon("no"), "Світла немає"),
+      legendItemEl(legendIcon("msecond"), "Світло буде другі 30 хв"),
+      legendItemEl(legendIcon("mfirst"), "Світло буде перші 30 хв"),
     ),
   );
 }
@@ -494,10 +514,6 @@ function buildScheduleLayout(
 // Public API
 // ============================================================
 
-/**
- * Render a schedule PNG image from region JSON data.
- * Returns a PNG Buffer ready to send via Telegram.
- */
 export async function renderScheduleImage(
   regionData: RegionData,
   queue: string,
@@ -512,19 +528,18 @@ export async function renderScheduleImage(
 
   const fonts = getFonts();
 
-  const IMG_W = 950;
+  const IMG_W = 802;
   const svg = await satori(layout as Parameters<typeof satori>[0], {
     width: IMG_W,
     fonts,
   });
 
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width" as const, value: IMG_W * 2 }, // 2x for Retina
+    fitTo: { mode: "width" as const, value: IMG_W * 2 },
   });
   const rendered = resvg.render();
   const pngRaw = rendered.asPng();
 
-  // Optimize with sharp
   const optimized = await sharp(pngRaw).png({ quality: 80, compressionLevel: 8 }).toBuffer();
 
   logger.debug(
